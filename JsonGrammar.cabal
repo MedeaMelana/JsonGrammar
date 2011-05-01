@@ -1,0 +1,28 @@
+Name:           JsonGrammar
+Version:        0.2
+Synopsis:       Combinators for bidirectional JSON parsing
+Description:   	Combinators for bidirectional JSON parsing
+
+
+Author:         Martijn van Steenbergen
+Maintainer:     martijn@van.steenbergen.nl
+Stability:      Experimental
+Copyright:      Some Rights Reserved (CC) 2010 Martijn van Steenbergen
+Homepage:       https://github.com/MedeaMelana/JsonGrammar
+Bug-reports:    https://github.com/MedeaMelana/JsonGramamr/issues
+
+
+Cabal-Version:  >= 1.2
+License:        BSD3
+License-file:   LICENSE
+Category:       JSON, Language
+Build-type:     Simple
+
+
+Library
+  Exposed-Modules:  Iso,
+                    JsonGrammar
+  Build-Depends:    base >= 3.0 && < 3.1,
+                    containers >= 0.3 && < 0.4,
+                    aeson >= 0.3 && < 0.4,
+                    vector >= 0.7 && < 0.8
