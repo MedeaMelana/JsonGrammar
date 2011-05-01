@@ -15,8 +15,8 @@ import Control.Monad
 import Data.Aeson
 import Data.Aeson.Types
 import qualified Data.Map as M
+import Data.Maybe (fromMaybe)
 import Data.String
-import Data.Text (Text)
 import qualified Data.Vector as V
 
 
@@ -57,10 +57,10 @@ liftAeson = Iso from to
 
 forceToJson :: Json a => String -> a -> Value
 forceToJson context value =
-  case convert (inverse grammar) value of
-    Just value' -> value'
-    Nothing     -> error (context ++
-      ": could not convert Haskell value to JSON value")
+    fromMaybe err (convert (inverse grammar) value)
+  where
+    err = error (context ++
+            ": could not convert Haskell value to JSON value")
 
 fromJson :: Json a => Value -> Maybe a
 fromJson = convert grammar

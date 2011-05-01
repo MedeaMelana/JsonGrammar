@@ -32,7 +32,7 @@ infixl 3 <>
 (<>) = mappend
 
 convert :: Iso a b -> a -> Maybe b
-convert (Iso f _) x = f x
+convert (Iso f _) = f
 
 inverse :: Iso a b -> Iso b a
 inverse (Iso f g) = Iso g f
