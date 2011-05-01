@@ -27,6 +27,7 @@ instance Monoid (Iso a b) where
       ((<|>) <$> f1 <*> f2)
       ((<|>) <$> g1 <*> g2)
 
+infixl 3 <>
 (<>) :: Monoid a => a -> a -> a
 (<>) = mappend
 
