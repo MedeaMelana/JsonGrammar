@@ -1,7 +1,7 @@
 default: run
 
 run:
-	ghci -Wall Domain
+	ghci -Wall Example
 
 clean:
 	cabal clean
