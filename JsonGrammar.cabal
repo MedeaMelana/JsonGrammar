@@ -21,8 +21,10 @@ Build-type:     Simple
 
 Library
   Exposed-Modules:  Iso,
-                    JsonGrammar
+                    JsonGrammar,
+                    TH
   Build-Depends:    base >= 3.0 && < 3.1,
                     containers >= 0.3 && < 0.4,
                     aeson >= 0.3 && < 0.4,
+                    template-haskell >= 2.4 && < 2.5,
                     vector >= 0.7 && < 0.8
