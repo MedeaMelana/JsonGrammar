@@ -16,16 +16,16 @@ deriveIsos name = do
   routers <-
     case info of
       TyConI (DataD _ _ _ cons _)   ->
-        mapM deriveIso cons
+        mapM (deriveIso (length cons /= 1)) cons
       TyConI (NewtypeD _ _ _ con _) ->
-        (:[]) <$> deriveIso con
+        (:[]) <$> deriveIso False con
       _ ->
         fail $ show name ++ " is not a datatype."
   return (TupE routers)
 
 
-deriveIso :: Con -> Q Exp
-deriveIso con =
+deriveIso :: Bool -> Con -> Q Exp
+deriveIso matchWildcard con =
   case con of
     NormalC name tys -> go name (map snd tys)
     RecC name tys -> go name (map (\(_,_,ty) -> ty) tys)
@@ -35,7 +35,7 @@ deriveIso con =
     go name tys = do
       iso <- [| Iso |]
       isoCon <- deriveConstructor name tys
-      isoDes <- deriveDestructor name tys
+      isoDes <- deriveDestructor matchWildcard name tys
       return $ iso `AppE` isoCon `AppE` isoDes
 
 
@@ -57,8 +57,8 @@ deriveConstructor name tys = do
   return $ LamE [pat] body
 
 
-deriveDestructor :: Name -> [Type] -> Q Exp
-deriveDestructor name tys = do
+deriveDestructor :: Bool -> Name -> [Type] -> Q Exp
+deriveDestructor matchWildcard name tys = do
   -- Introduce some names
   x          <- newName "x"
   r          <- newName "r"
@@ -67,6 +67,7 @@ deriveDestructor name tys = do
   -- Figure out the names of some constructors
   ConE just  <- [| Just |]
   ConE cons  <- [| (:-) |]
+  nothing    <- [| Nothing |]
 
   let conPat   = ConP name (map VarP fieldNames)
   let okBody   = ConE just `AppE`
@@ -75,16 +76,14 @@ deriveDestructor name tys = do
                     (VarE r)
                     fieldNames
   let okCase   = Match (ConP cons [conPat, VarP r]) (NormalB okBody) []
-  allCases <- withFallthrough [okCase]
+  let failCase = Match WildP (NormalB nothing) []
+  let allCases =
+        if matchWildcard
+              then [okCase, failCase]
+              else [okCase]
 
   return $ LamE [VarP x] (CaseE (VarE x) allCases)
 
-withFallthrough :: [Match] -> Q [Match]
--- no fallthrough necessary for datatypes with a single constructor
--- withFallthrough pats@[_] = return pats
-withFallthrough pats = do
-  nothing    <- [| Nothing |]
-  return $ pats ++ [Match WildP (NormalB nothing) []]
 
 -- Retrieve the name of a constructor.
 conName :: Con -> Name
