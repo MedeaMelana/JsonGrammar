@@ -138,8 +138,8 @@ instance Json [Char] where
 instance Json a => Json (Maybe a) where
   grammar = option grammar
 
-forceToJson :: Json a => String -> a -> Value
-forceToJson context value =
+unsafeToJson :: Json a => String -> a -> Value
+unsafeToJson context value =
     fromMaybe err (convert (inverse (unstack grammar)) value)
   where
     err = error (context ++
@@ -155,7 +155,7 @@ toJson = convert (inverse (unstack grammar))
 
 -- | Expect/produce a specific JSON 'Value'.
 litJson :: Json a => a -> Iso (Value :- t) t
-litJson = inverseLit . forceToJson "litJson"
+litJson = inverseLit . unsafeToJson "litJson"
 
 -- | Describe a property whose value grammar is described by a 'Json' instance.
 prop :: Json a => String -> Iso (Object :- t) (Object :- a :- t)
@@ -163,4 +163,4 @@ prop = propBy grammar
 
 -- | Expect a specific key/value pair.
 fixedProp :: Json a => String -> a -> Iso (Object :- t) (Object :- t)
-fixedProp name value = rawFixedProp name (forceToJson "fixedProp" value)
+fixedProp name value = rawFixedProp name (unsafeToJson "fixedProp" value)
