@@ -85,5 +85,6 @@ lit x = Iso f g
       guard (x' == x)
       Just t
 
+-- | Inverse of 'lit'.
 inverseLit :: Eq a => a -> Iso (a :- t) t
 inverseLit = inverse . lit

@@ -15,6 +15,8 @@ module Data.Iso.Common (
   
   -- * @Either a b@
   left, right,
+  
+  -- * @Bool@
   false, true
 
   ) where

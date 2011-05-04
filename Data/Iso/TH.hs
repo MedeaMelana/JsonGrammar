@@ -9,7 +9,9 @@ import Control.Applicative
 import Control.Monad
 
 
--- | Derive partial isomorphisms for a given datatype. 
+-- | Derive partial isomorphisms for a given datatype. The resulting
+-- expression is a tuple with one isomorphism element for each constructor in
+-- the datatype.
 deriveIsos :: Name -> Q Exp
 deriveIsos name = do
   info <- reify name
