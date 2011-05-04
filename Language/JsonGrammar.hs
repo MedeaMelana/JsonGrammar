@@ -5,12 +5,12 @@
 {-# LANGUAGE NoMonoPatBinds #-}
 
 module Language.JsonGrammar (
-  -- * The Json type class
-  Json(..), fromJson, toJson,
-  
   -- * Constructing JSON grammars
-  option, array,
-  liftAeson, prop, propBy, object, fixedProp, rawFixedProp, litJson
+  liftAeson, option, greedyOption, array,
+  propBy, rawFixedProp, object,
+  
+  -- * Type-directed conversion
+  Json(..), fromJson, toJson, litJson, prop, fixedProp
   
   ) where
 
@@ -32,35 +32,10 @@ import Data.String
 import qualified Data.Vector as V
 
 
+aeObject :: Iso (Object :- t) (Value :- t)
+aeArray  :: Iso (Array  :- t) (Value :- t)
+aeNull   :: Iso            t  (Value :- t)
 (aeObject, aeArray, _, _, _, aeNull) = $(deriveIsos ''Value)
-
-
--- Json type class and instances
-
--- | Convert values of a type to and from JSON. Minimal complete definition: either 'grammar' or 'grammarStack'.
-class Json a where
-  grammar :: Iso Value a
-  grammar = unstack grammarStack
-  
-  grammarStack :: Iso (Value :- t) (a :- t)
-  grammarStack = stack grammar
-
-instance Json a => Json [a] where
-  grammarStack = array grammarStack
-
-instance Json Bool where
-  grammar = liftAeson
-
-instance Json Int where
-  grammar = liftAeson
-
-instance Json [Char] where
-  grammar = liftAeson
-
-instance Json a => Json (Maybe a) where
-  grammarStack = option grammarStack
-
--- instance Json 
 
 -- | Convert any Aeson-enabled type to a grammar.
 liftAeson :: (FromJSON a, ToJSON a) => Iso Value a
@@ -69,65 +44,17 @@ liftAeson = Iso from to
     from = parseMaybe parseJSON
     to   = Just . toJSON
 
-forceToJson :: Json a => String -> a -> Value
-forceToJson context value =
-    fromMaybe err (convert (inverse grammar) value)
-  where
-    err = error (context ++
-            ": could not convert Haskell value to JSON value")
+-- | Introduce 'Null' as possible value. First gives the argument grammar a
+-- chance, only yielding 'Null' or 'Nothing' if the argument grammar fails to
+-- handle the input.
+option :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
+option g = just . g <> nothing . inverse aeNull
 
--- | Convert from JSON.
-fromJson :: Json a => Value -> Maybe a
-fromJson = convert grammar
-
--- | Convert to JSON.
-toJson :: Json a => a -> Maybe Value
-toJson = convert (inverse grammar)
-
-
--- Object grammars
-
--- | Describe a property whose value grammar is described by a 'Json' instance.
-prop :: Json a => String -> Iso (Object :- t) (Object :- a :- t)
-prop = propBy grammarStack
-
--- | Describe a property with the given name and value grammar.
-propBy :: Iso (Value :- t) (a :- t) -> String -> Iso (Object :- t) (Object :- a :- t)
-propBy g name = duck g . rawProp name
-
-rawProp :: String -> Iso (Object :- t) (Object :- Value :- t)
-rawProp name = Iso from to
-  where
-    textName = fromString name
-    from (o :- r) = do
-      value <- M.lookup textName o
-      return (M.delete textName o :- value :- r)
-    to (o :- value :- r) = do
-      guard (M.notMember textName o)
-      return (M.insert textName value o :- r)
-
--- | Expect a specific key/value pair.
-fixedProp :: Json a => String -> a -> Iso (Object :- t) (Object :- t)
-fixedProp name value = rawFixedProp name (forceToJson "fixedProp" value)
-
--- | Expect a specific key/value pair.
-rawFixedProp :: String -> Value -> Iso (Object :- t) (Object :- t)
-rawFixedProp name value = stack (Iso from to)
-  where
-    textName = fromString name
-    from o = do
-      value' <- M.lookup textName o
-      guard (value' == value)
-      return (M.delete textName o)
-    to o = do
-      guard (M.notMember textName o)
-      return (M.insert textName value o)
-
--- | Wrap an exhaustive bunch of properties in an object. Typical usage:
--- 
--- > object (prop "key1" . prop "key2")
-object :: Iso (Object :- t1) (Object :- t2) -> Iso (Value :- t1) t2
-object props = inverse aeObject >>> props >>> inverseLit (M.empty)
+-- | Introduce 'Null' as possible (greedy) value. Always converts 'Nothing' to
+-- 'Null' and vice versa, even if the argument grammar knows how to handle
+-- these values.
+greedyOption :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
+greedyOption g = nothing . inverse aeNull <> just . g
 
 -- | Describe an array whose elements match the given grammar.
 array :: Iso (Value :- ()) (a :- ()) -> Iso (Value :- t) ([a] :- t)
@@ -155,18 +82,89 @@ array = stack . array' . unstack
 --     g = Just . V.fromList
 
 
--- | Introduce 'Null' as possible (greedy) value. Always converts 'Nothing' to
--- 'Null' and vice versa, even if the argument grammar knows how to handle
--- these values.
-greedyOption :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
-greedyOption g = nothing . inverse aeNull <> just . g
+-- | Describe a property with the given name and value grammar.
+propBy :: Iso (Value :- t) (a :- t) -> String -> Iso (Object :- t) (Object :- a :- t)
+propBy g name = duck g . rawProp name
 
--- | Introduce 'Null' as possible value. First gives the argument grammar a
--- chance, only yielding 'Null' or 'Nothing' if the argument grammar fails to
--- handle the input.
-option :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
-option g = just . g <> nothing . inverse aeNull
+rawProp :: String -> Iso (Object :- t) (Object :- Value :- t)
+rawProp name = Iso from to
+  where
+    textName = fromString name
+    from (o :- r) = do
+      value <- M.lookup textName o
+      return (M.delete textName o :- value :- r)
+    to (o :- value :- r) = do
+      guard (M.notMember textName o)
+      return (M.insert textName value o :- r)
+
+-- | Expect a specific key/value pair.
+rawFixedProp :: String -> Value -> Iso (Object :- t) (Object :- t)
+rawFixedProp name value = stack (Iso from to)
+  where
+    textName = fromString name
+    from o = do
+      value' <- M.lookup textName o
+      guard (value' == value)
+      return (M.delete textName o)
+    to o = do
+      guard (M.notMember textName o)
+      return (M.insert textName value o)
+
+-- | Wrap an exhaustive bunch of properties in an object. Typical usage:
+-- 
+-- > object (prop "key1" . prop "key2")
+object :: Iso (Object :- t1) (Object :- t2) -> Iso (Value :- t1) t2
+object props = inverse aeObject >>> props >>> inverseLit (M.empty)
+
+
+-- Type-directed conversion
+
+-- | Convert values of a type to and from JSON. Minimal complete definition: either 'grammar' or 'grammarStack'.
+class Json a where
+  grammar :: Iso Value a
+  grammar = unstack grammarStack
+  
+  grammarStack :: Iso (Value :- t) (a :- t)
+  grammarStack = stack grammar
+
+instance Json a => Json [a] where
+  grammarStack = array grammarStack
+
+instance Json Bool where
+  grammar = liftAeson
+
+instance Json Int where
+  grammar = liftAeson
+
+instance Json [Char] where
+  grammar = liftAeson
+
+instance Json a => Json (Maybe a) where
+  grammarStack = option grammarStack
+
+forceToJson :: Json a => String -> a -> Value
+forceToJson context value =
+    fromMaybe err (convert (inverse grammar) value)
+  where
+    err = error (context ++
+            ": could not convert Haskell value to JSON value")
+
+-- | Convert from JSON.
+fromJson :: Json a => Value -> Maybe a
+fromJson = convert grammar
+
+-- | Convert to JSON.
+toJson :: Json a => a -> Maybe Value
+toJson = convert (inverse grammar)
 
 -- | Expect/produce a specific JSON 'Value'.
 litJson :: Json a => a -> Iso (Value :- t) t
 litJson = inverseLit . forceToJson "litJson"
+
+-- | Describe a property whose value grammar is described by a 'Json' instance.
+prop :: Json a => String -> Iso (Object :- t) (Object :- a :- t)
+prop = propBy grammarStack
+
+-- | Expect a specific key/value pair.
+fixedProp :: Json a => String -> a -> Iso (Object :- t) (Object :- t)
+fixedProp name value = rawFixedProp name (forceToJson "fixedProp" value)
