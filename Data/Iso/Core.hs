@@ -70,6 +70,12 @@ unstack (Iso f g) = Iso (lift f) (lift g)
   where
     lift k = fmap head . k . (:- ())
 
+-- | Swap the top two arguments.
+swap :: Iso (a :- b :- t) (b :- a :- t)
+swap = Iso f f
+  where
+    f (x :- y :- t) = Just (y :- x :- t)
+
 -- | Introduce a head value that is passed unmodified.
 duck :: Iso t1 t2 -> Iso (h :- t1) (h :- t2)
 duck (Iso f g) = Iso (lift f) (lift g)
