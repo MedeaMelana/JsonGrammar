@@ -46,6 +46,6 @@ instance Json Attachment where
     )
 
 instance Json AttachmentType where
-  grammarStack = attVideo . lit "video"
-              <> attImage . lit "image"
-              <> attHtml  . lit "html"
+  grammarStack = attVideo . litJson "video"
+              <> attImage . litJson "image"
+              <> attHtml  . litJson "html"

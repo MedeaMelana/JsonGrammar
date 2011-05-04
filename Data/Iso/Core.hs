@@ -6,7 +6,7 @@ module Data.Iso.Core (
   Iso(..), convert, inverse, (<>),
   
   -- * Stack-based isomorphisms
-  (:-)(..), stack, unstack, duck
+  (:-)(..), stack, unstack, duck, lit, inverseLit
   
   ) where
 
@@ -75,3 +75,15 @@ duck :: Iso t1 t2 -> Iso (h :- t1) (h :- t2)
 duck (Iso f g) = Iso (lift f) (lift g)
   where
     lift k (h :- t) = (h :-) <$> k t
+
+-- | Push or pop a specific value.
+lit :: Eq a => a -> Iso t (a :- t)
+lit x = Iso f g
+  where
+    f t = Just (x :- t)
+    g (x' :- t) = do
+      guard (x' == x)
+      Just t
+
+inverseLit :: Eq a => a -> Iso (a :- t) t
+inverseLit = inverse . lit

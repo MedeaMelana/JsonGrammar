@@ -1,17 +1,22 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoMonoPatBinds #-}
 
 module Language.JsonGrammar (
   -- * The Json type class
   Json(..), fromJson, toJson,
   
   -- * Constructing JSON grammars
-  liftAeson, prop, propBy, object, fixedProp, rawFixedProp, lit, rawLit
+  option, array,
+  liftAeson, prop, propBy, object, fixedProp, rawFixedProp, litJson
   
   ) where
 
 import Data.Iso.Core
+import Data.Iso.TH
+import Data.Iso.Common
 
 import Prelude hiding (id, (.), head, maybe)
 
@@ -27,6 +32,9 @@ import Data.String
 import qualified Data.Vector as V
 
 
+(aeObject, aeArray, _, _, _, aeNull) = $(deriveIsos ''Value)
+
+
 -- Json type class and instances
 
 -- | Convert values of a type to and from JSON. Minimal complete definition: either 'grammar' or 'grammarStack'.
@@ -38,7 +46,7 @@ class Json a where
   grammarStack = stack grammar
 
 instance Json a => Json [a] where
-  grammar = array grammar
+  grammarStack = array grammarStack
 
 instance Json Bool where
   grammar = liftAeson
@@ -50,7 +58,7 @@ instance Json [Char] where
   grammar = liftAeson
 
 instance Json a => Json (Maybe a) where
-  grammar = maybe grammar
+  grammarStack = option grammarStack
 
 -- instance Json 
 
@@ -119,45 +127,46 @@ rawFixedProp name value = stack (Iso from to)
 -- 
 -- > object (prop "key1" . prop "key2")
 object :: Iso (Object :- t1) (Object :- t2) -> Iso (Value :- t1) t2
-object (Iso from to) = Iso from' to'
-  where
-    from' (v :- t1) = do
-      Object o <- return v
-      o' :- t2 <- from (o :- t1)
-      guard (M.null o')  -- reject unrecognised properties
-      return t2
-    to' t2 = do
-      o :- t1 <- to (M.empty :- t2)
-      return (Object o :- t1)
+object props = inverse aeObject >>> props >>> inverseLit (M.empty)
 
 -- | Describe an array whose elements match the given grammar.
-array :: Iso Value a -> Iso Value [a]
-array (Iso from to) = Iso from' to'
+array :: Iso (Value :- ()) (a :- ()) -> Iso (Value :- t) ([a] :- t)
+array = stack . array' . unstack
   where
-    from' v = do
-      Array vector <- return v
-      mapM from (V.toList vector)
-    to' xs = Array . V.fromList <$> mapM to xs
+    array' :: Iso Value a -> Iso Value [a]
+    array' (Iso from to) = Iso from' to'
+      where
+        from' v = do
+          Array vector <- return v
+          mapM from (V.toList vector)
+        to' xs = Array . V.fromList <$> mapM to xs
 
--- | Introduce 'Null' as possible value.
-maybe :: Iso Value a -> Iso Value (Maybe a)
-maybe (Iso from to) = Iso from' to'
-  where
-    from' Null   = return Nothing
-    from' v      = Just <$> from v
-    to' Nothing  = return Null
-    to' (Just v) = to v
+-- TODO: Write array in terms of stack operations
+-- array :: forall t a. Iso (Value :- t) (a :- t) -> Iso (Value :- t) ([a] :- t)
+-- array g = inverse aeArray >>> vectorList >>> elements
+--   where
+--     elements :: Iso ([Value] :- t) ([a] :- t)
+--     elements = undefined
+-- 
+-- vectorList :: Iso (V.Vector a :- t) ([a] :- t)
+-- vectorList = stack (Iso f g)
+--   where
+--     f = Just . V.toList
+--     g = Just . V.fromList
+
+
+-- | Introduce 'Null' as possible (greedy) value. Always converts 'Nothing' to
+-- 'Null' and vice versa, even if the argument grammar knows how to handle
+-- these values.
+greedyOption :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
+greedyOption g = nothing . inverse aeNull <> just . g
+
+-- | Introduce 'Null' as possible value. First gives the argument grammar a
+-- chance, only yielding 'Null' or 'Nothing' if the argument grammar fails to
+-- handle the input.
+option :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
+option g = just . g <> nothing . inverse aeNull
 
 -- | Expect/produce a specific JSON 'Value'.
-lit :: Json a => a -> Iso (Value :- t) t
-lit = rawLit . forceToJson "lit"
-
--- | Expect/produce a specific JSON 'Value'.
-rawLit :: Value -> Iso (Value :- t) t
-rawLit value = Iso from to
-  where
-    from (value' :- t) = do
-      guard (value == value')
-      return t
-    to t =
-      return (value :- t)
+litJson :: Json a => a -> Iso (Value :- t) t
+litJson = inverseLit . forceToJson "litJson"
