@@ -37,7 +37,7 @@ attHtml  :: Iso a (AttachmentType :- a)
 -- Json grammars
 
 instance Json Attachment where
-  grammarStack = attachment . object
+  grammar = attachment . object
     ( prop "data"
     . prop "description"
     . prop "type"
@@ -46,6 +46,6 @@ instance Json Attachment where
     )
 
 instance Json AttachmentType where
-  grammarStack = attVideo . litJson "video"
+  grammar = attVideo . litJson "video"
               <> attImage . litJson "image"
               <> attHtml  . litJson "html"

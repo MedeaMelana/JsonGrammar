@@ -38,8 +38,8 @@ aeNull   :: Iso            t  (Value :- t)
 (aeObject, aeArray, _, _, _, aeNull) = $(deriveIsos ''Value)
 
 -- | Convert any Aeson-enabled type to a grammar.
-liftAeson :: (FromJSON a, ToJSON a) => Iso Value a
-liftAeson = Iso from to
+liftAeson :: (FromJSON a, ToJSON a) => Iso (Value :- t) (a :- t)
+liftAeson = stack (Iso from to)
   where
     from = parseMaybe parseJSON
     to   = Just . toJSON
@@ -119,16 +119,12 @@ object props = inverse aeObject >>> props >>> inverseLit (M.empty)
 
 -- Type-directed conversion
 
--- | Convert values of a type to and from JSON. Minimal complete definition: either 'grammar' or 'grammarStack'.
+-- | Convert values of a type to and from JSON.
 class Json a where
-  grammar :: Iso Value a
-  grammar = unstack grammarStack
-  
-  grammarStack :: Iso (Value :- t) (a :- t)
-  grammarStack = stack grammar
+  grammar :: Iso (Value :- t) (a :- t)
 
 instance Json a => Json [a] where
-  grammarStack = array grammarStack
+  grammar = array grammar
 
 instance Json Bool where
   grammar = liftAeson
@@ -140,22 +136,22 @@ instance Json [Char] where
   grammar = liftAeson
 
 instance Json a => Json (Maybe a) where
-  grammarStack = option grammarStack
+  grammar = option grammar
 
 forceToJson :: Json a => String -> a -> Value
 forceToJson context value =
-    fromMaybe err (convert (inverse grammar) value)
+    fromMaybe err (convert (inverse (unstack grammar)) value)
   where
     err = error (context ++
             ": could not convert Haskell value to JSON value")
 
 -- | Convert from JSON.
 fromJson :: Json a => Value -> Maybe a
-fromJson = convert grammar
+fromJson = convert (unstack grammar)
 
 -- | Convert to JSON.
 toJson :: Json a => a -> Maybe Value
-toJson = convert (inverse grammar)
+toJson = convert (inverse (unstack grammar))
 
 -- | Expect/produce a specific JSON 'Value'.
 litJson :: Json a => a -> Iso (Value :- t) t
@@ -163,7 +159,7 @@ litJson = inverseLit . forceToJson "litJson"
 
 -- | Describe a property whose value grammar is described by a 'Json' instance.
 prop :: Json a => String -> Iso (Object :- t) (Object :- a :- t)
-prop = propBy grammarStack
+prop = propBy grammar
 
 -- | Expect a specific key/value pair.
 fixedProp :: Json a => String -> a -> Iso (Object :- t) (Object :- t)
