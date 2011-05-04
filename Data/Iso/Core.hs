@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeOperators #-}
 
-module Iso (
+module Data.Iso.Core (
 
   -- * Partial isomorphisms
   Iso(..), convert, inverse, (<>),

@@ -1,9 +1,9 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module TH (deriveIsos) where
+module Data.Iso.TH (deriveIsos) where
 
-import Iso
+import Data.Iso.Core
 import Language.Haskell.TH
 import Control.Applicative
 import Control.Monad

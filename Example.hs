@@ -4,9 +4,9 @@
 
 module Example where
 
-import Iso
-import JsonGrammar
-import TH
+import Data.Iso.Core
+import Data.Iso.TH
+import Language.JsonGrammar
 
 import Prelude hiding (id, (.), head)
 import Control.Category

@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverlappingInstances #-}
 
-module JsonGrammar (
+module Language.JsonGrammar (
   -- * The Json type class
   Json(..), fromJson, toJson,
   
@@ -11,7 +11,7 @@ module JsonGrammar (
   
   ) where
 
-import Iso
+import Data.Iso.Core
 
 import Prelude hiding (id, (.), head, maybe)
 
