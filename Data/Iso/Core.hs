@@ -6,7 +6,7 @@ module Data.Iso.Core (
   Iso(..), convert, inverse, (<>),
   
   -- * Stack-based isomorphisms
-  (:-)(..), stack, unstack, duck, lit, inverseLit
+  (:-)(..), stack, unstack, swap, duck, lit, inverseLit
   
   ) where
 
@@ -27,11 +27,11 @@ data Iso a b = Iso (a -> Maybe b) (b -> Maybe a)
 
 instance Category Iso where
   id                    = Iso Just Just
-  Iso f1 g1 . Iso f2 g2 = Iso (f1 <=< f2) (g1 >=> g2)
+  ~(Iso f1 g1) . ~(Iso f2 g2) = Iso (f1 <=< f2) (g1 >=> g2)
 
 instance Monoid (Iso a b) where
   mempty = Iso (const Nothing) (const Nothing)
-  Iso f1 g1 `mappend` Iso f2 g2 =
+  ~(Iso f1 g1) `mappend` ~(Iso f2 g2) =
     Iso
       ((<|>) <$> f1 <*> f2)
       ((<|>) <$> g1 <*> g2)
