@@ -20,7 +20,6 @@ import Data.Iso.Common
 
 import Prelude hiding (id, (.), head, maybe)
 
-import Control.Applicative
 import Control.Category
 import Control.Monad
 
@@ -57,29 +56,18 @@ greedyOption :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
 greedyOption g = nothing . inverse aeNull <> just . g
 
 -- | Describe an array whose elements match the given grammar.
-array :: Iso (Value :- ()) (a :- ()) -> Iso (Value :- t) ([a] :- t)
-array = stack . array' . unstack
+array :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) ([a] :- t)
+array g = inverse aeArray >>> vectorList >>> elements
   where
-    array' :: Iso Value a -> Iso Value [a]
-    array' (Iso from to) = Iso from' to'
-      where
-        from' v = do
-          Array vector <- return v
-          mapM from (V.toList vector)
-        to' xs = Array . V.fromList <$> mapM to xs
+    elements = (inverse cons >>> swap >>> duck g >>> swap >>>
+                  duck elements >>> cons)
+            <> (inverse nil >>> nil)
 
--- TODO: Write array in terms of stack operations
--- array :: forall t a. Iso (Value :- t) (a :- t) -> Iso (Value :- t) ([a] :- t)
--- array g = inverse aeArray >>> vectorList >>> elements
---   where
---     elements :: Iso ([Value] :- t) ([a] :- t)
---     elements = undefined
--- 
--- vectorList :: Iso (V.Vector a :- t) ([a] :- t)
--- vectorList = stack (Iso f g)
---   where
---     f = Just . V.toList
---     g = Just . V.fromList
+vectorList :: Iso (V.Vector a :- t) ([a] :- t)
+vectorList = stack (Iso f g)
+  where
+    f = Just . V.toList
+    g = Just . V.fromList
 
 
 -- | Describe a property with the given name and value grammar.
