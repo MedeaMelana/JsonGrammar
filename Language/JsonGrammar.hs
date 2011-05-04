@@ -81,11 +81,11 @@ toJson = convert (inverse grammar)
 
 -- | Describe a property whose value grammar is described by a 'Json' instance.
 prop :: Json a => String -> Iso (Object :- t) (Object :- a :- t)
-prop = propBy grammar
+prop = propBy grammarStack
 
 -- | Describe a property with the given name and value grammar.
-propBy :: Iso Value a -> String -> Iso (Object :- t) (Object :- a :- t)
-propBy g name = duck (stack g) . rawProp name
+propBy :: Iso (Value :- t) (a :- t) -> String -> Iso (Object :- t) (Object :- a :- t)
+propBy g name = duck g . rawProp name
 
 rawProp :: String -> Iso (Object :- t) (Object :- Value :- t)
 rawProp name = Iso from to
