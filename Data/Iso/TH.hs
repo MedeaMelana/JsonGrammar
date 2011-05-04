@@ -31,8 +31,7 @@ deriveIso matchWildcard con =
   case con of
     NormalC name tys -> go name (map snd tys)
     RecC name tys -> go name (map (\(_,_,ty) -> ty) tys)
-    _ -> do
-      fail $ "Unsupported constructor " ++ show (conName con)
+    _ -> fail $ "Unsupported constructor " ++ show (conName con)
   where
     go name tys = do
       iso <- [| Iso |]

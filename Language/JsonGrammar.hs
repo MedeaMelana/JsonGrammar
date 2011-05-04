@@ -114,7 +114,7 @@ rawFixedProp name value = stack (Iso from to)
 -- 
 -- > object (prop "key1" . prop "key2")
 object :: Iso (Object :- t1) (Object :- t2) -> Iso (Value :- t1) t2
-object props = inverse aeObject >>> props >>> inverseLit (M.empty)
+object props = inverse aeObject >>> props >>> inverseLit M.empty
 
 
 -- Type-directed conversion
