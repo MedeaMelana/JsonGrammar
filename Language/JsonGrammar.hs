@@ -6,7 +6,7 @@
 
 module Language.JsonGrammar (
   -- * Constructing JSON grammars
-  liftAeson, option, greedyOption, array,
+  liftAeson, option, greedyOption, array, either,
   propBy, rawFixedProp, object,
   
   -- * Type-directed conversion
@@ -18,7 +18,7 @@ import Data.Iso.Core
 import Data.Iso.TH
 import Data.Iso.Common
 
-import Prelude hiding (id, (.), head, maybe)
+import Prelude hiding (id, (.), head, maybe, either)
 
 import Control.Category
 import Control.Monad
@@ -68,6 +68,12 @@ vectorList = stack (Iso f g)
   where
     f = Just . V.toList
     g = Just . V.fromList
+
+-- | Match an @Either a b@ by first trying the grammar for @a@ and then trying
+-- the grammar for @b@.
+either :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (b :- t) ->
+  Iso (Value :- t) (Either a b :- t)
+either f g = left . f <> right . g
 
 
 -- | Describe a property with the given name and value grammar.
@@ -125,6 +131,9 @@ instance Json [Char] where
 
 instance Json a => Json (Maybe a) where
   grammar = option grammar
+
+instance (Json a, Json b) => Json (Either a b) where
+  grammar = either grammar grammar
 
 unsafeToJson :: Json a => String -> a -> Value
 unsafeToJson context value =
