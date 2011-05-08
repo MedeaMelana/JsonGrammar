@@ -2,6 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoMonoPatBinds #-}
 
+-- | Constructor-destructor isomorphisms for some common datatypes.
 module Data.Iso.Common (
 
   -- * @()@

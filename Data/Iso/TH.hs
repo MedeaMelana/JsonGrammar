@@ -12,6 +12,14 @@ import Control.Monad
 -- | Derive partial isomorphisms for a given datatype. The resulting
 -- expression is a tuple with one isomorphism element for each constructor in
 -- the datatype.
+-- 
+-- For example:
+-- 
+-- > nothing :: Iso t (Maybe a :- t)
+-- > just    :: Iso (a :- t) (Maybe a :- t)
+-- > (nothing, just) = $(deriveIsos ''Maybe)
+-- 
+-- Deriving isomorphisms this way requires @-XNoMonoPatBinds@.
 deriveIsos :: Name -> Q Exp
 deriveIsos name = do
   info <- reify name
