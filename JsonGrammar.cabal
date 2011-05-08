@@ -12,7 +12,7 @@ Homepage:       https://github.com/MedeaMelana/JsonGrammar
 Bug-reports:    https://github.com/MedeaMelana/JsonGramamr/issues
 
 
-Cabal-Version:  >= 1.2
+Cabal-Version:  >= 1.6
 License:        BSD3
 License-file:   LICENSE
 Category:       JSON, Language
@@ -33,3 +33,7 @@ Library
                     -- constraints copied from aeson-0.3.2.5:
                     text >= 0.11.0.2,
                     vector >= 0.7
+
+Source-Repository head
+  Type:         git
+  Location:     https://github.com/MedeaMelana/JsonGrammar
