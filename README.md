@@ -107,7 +107,7 @@ lng = 5.1993055})
 
 ## Show me the types!
 
-I've shown you how to use the library, but I haven't shown you any types. The library is based on partial isomorphisms:
+The library is based on *partial isomorphisms*:
 
 ```
 data Iso a b = Iso (a -> Maybe b) (b -> Maybe a)
@@ -138,12 +138,12 @@ Converting from a constructor to its fields might fail, because the value that
 is passed to the conversion function might be a different constructor of the
 same datatype. This is why the `Monoid` instance is so useful: we can give
 multiple grammars, usually one for each constructor, and they will be tried in
-sequence.
+sequence. They are effectively *composable pattern matches*.
 
 ## Stack isomorphisms
 
 There is a problem with encoding the fields of such a constructor as an
-N-tuple: if we want to compose it with other isomorphisms that handle the
+n-tuple: if we want to compose it with other isomorphisms that handle the
 individual fields, we have to use complicated tuple projections to select the
 fields that we're interested in. Basically we have unwrapped the fields from
 one constructor only to wrap them in another one!
@@ -163,6 +163,11 @@ Read `:-` as 'cons', but then for types instead of values. Its definition is sim
 data h :- t = h :- t
 ```
 
+The polymorphic tail says that `person` doesn't care what's on the stack below
+the two `Floats`; it will simply pass that part of the stack on to the
+right-hand side. And vice versa, if we're working with the isomorphism in the
+opposite direction.
+
 Have you thought about what the types of `male` and `female` would be in the
 non-stack versions of the isomorphisms? They don't have any fields; we would
 have to leave the first type parameter of `Iso` empty somehow, for example by
@@ -179,7 +184,7 @@ Stack isomorphisms compose beautifully using `.`, often without needing any
 special projection functions. To get a feeling for it, try compiling the
 example Json grammars and looking at the types of the individual components.
 
-I lied when I told you grammars have type `Iso Value a`; they actually use
+We lied when we wrote that grammars have type `Iso Value a`; they actually use
 stacks themselves, too. Here is the true definition of the `Json` type class:
 
 ```
@@ -205,9 +210,9 @@ data Person = Person
   } deriving (Eq, Show)
 ```
 
-Suppose, tho, that we cannot change the JSON because we have no control over
-it. With JsonGrammar we can express mappings where the nesting is not
-one-to-one:
+However, suppose that for this example's sake have no control over the JSON
+format and cannot change it to match our new structure. With JsonGrammar we
+can express mappings where the nesting is not one-to-one:
 
 ```
 instance Json Person where
@@ -229,9 +234,25 @@ combinator that makes a grammar (`coords` in this case) work one element down
 the stack. Here it makes sure the top values can remain `Object`s, which is
 needed by `prop`.
 
-What is important to note here is not only that we can express mappings with
+What is important to note here is that not only can we express mappings with
 different nestings, we can also capture this behaviour in its own grammar for
 reuse. JsonGrammar allows this level of modularity in everything it does.
+
+## History and related work
+
+The ideas behind JsonGrammar go back a bit. They are based on Zwaluw, which is
+a library for writing bidirectional parsers/pretty-printers for type-safe
+URLs, also in a DRY manner. Zwaluw, too, uses stacks to achieve a high level
+of modularity. In turn, Zwaluw was inspired by
+[HoleyMonoid](http://hackage.haskell.org/package/HoleyMonoid), which shows
+that the CPS-like manner of using polymorphic stack tails allows combinators
+to build up a list of expected arguments for use in printf-like functionality.
+
+The `Iso` datatype comes from
+[partial-isomorphisms](http://hackage.haskell.org/package/partial-isomorphisms)
+and is described in more detail in [Invertible syntax descriptions: Unifying
+parsing and pretty
+printing](http://www.informatik.uni-marburg.de/~rendel/unparse/).
 
 ## Future work
 
@@ -239,8 +260,3 @@ reuse. JsonGrammar allows this level of modularity in everything it does.
 * Supporting new use cases
 * Improved error messages
 * Compile to JSON Schema
-
-## Related work
-
-* zwaluw
-* invertible-syntax
