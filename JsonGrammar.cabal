@@ -20,7 +20,8 @@ Build-type:     Simple
 
 
 Library
-  Exposed-Modules:  Data.Iso.Core,
+  Exposed-Modules:  Data.Iso,
+                    Data.Iso.Core,
                     Data.Iso.TH,
                     Data.Iso.Common,
                     Language.JsonGrammar
