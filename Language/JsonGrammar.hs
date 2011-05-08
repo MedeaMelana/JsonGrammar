@@ -6,7 +6,7 @@
 
 module Language.JsonGrammar (
   -- * Constructing JSON grammars
-  liftAeson, option, greedyOption, array, either,
+  liftAeson, option, greedyOption, array,
   propBy, rawFixedProp, object,
   
   -- * Type-directed conversion
@@ -68,12 +68,6 @@ vectorList = stack (Iso f g)
   where
     f = Just . V.toList
     g = Just . V.fromList
-
--- | Match an @Either a b@ by first trying the grammar for @a@ and then trying
--- the grammar for @b@.
-either :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (b :- t) ->
-  Iso (Value :- t) (Either a b :- t)
-either f g = left . f <> right . g
 
 
 -- | Describe a property with the given name and value grammar.

@@ -8,7 +8,7 @@ import Data.Iso.Core
 import Data.Iso.TH
 import Language.JsonGrammar
 
-import Prelude hiding (id, (.), head)
+import Prelude hiding (id, (.), head, either)
 import Control.Category
 
 
