@@ -129,6 +129,15 @@ instance Json Bool where
 instance Json Int where
   grammar = liftAeson
 
+instance Json Integer where
+  grammar = liftAeson
+
+instance Json Float where
+  grammar = liftAeson
+
+instance Json Double where
+  grammar = liftAeson
+
 instance Json [Char] where
   grammar = liftAeson
 
