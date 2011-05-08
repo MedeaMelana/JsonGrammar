@@ -38,6 +38,7 @@ instance Monoid (Iso a b) where
       ((<|>) <$> g1 <*> g2)
 
 infixl 3 <>
+-- | Synonym for mappend.
 (<>) :: Monoid a => a -> a -> a
 (<>) = mappend
 
