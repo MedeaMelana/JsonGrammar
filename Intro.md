@@ -1,7 +1,7 @@
 # Introducing JsonGrammar
 
-The first version of `JsonGrammar` has just been released on Hackage!
-`JsonGrammar` offers an API for converting between your own datatypes and JSON
+The first version of JsonGrammar has just been released on Hackage!
+JsonGrammar offers an API for converting between your own datatypes and JSON
 ASTs.
 
 *"What, another JSON library? Don't we have enough already?"*
@@ -30,9 +30,9 @@ So these libraries give you the choice: either you write out `fromJson` and
 `toJson` by hand and have full control over the mapping, or you give up this
 control and let Template Haskell do all the work for you.
 
-`JsonGrammar` gives you the best of both worlds: it gives you full control
-over what the mapping should be, with an API that lets you define `fromJson`
-and `toJson` at the same time. It achieves this by separating the
+JsonGrammar gives you the best of both worlds: it gives you full control over
+what the mapping should be, with an API that lets you define `fromJson` and
+`toJson` at the same time. It achieves this by separating the
 constructing/destructing of datatype constructors and its fields from the
 description of the JSON values. The former is derived by Template Haskell, the
 latter is provided by the programmer.
@@ -83,12 +83,12 @@ instance Json Person where
     )
 
 instance Json Gender where
-  grammar = male   . litJson "man"
-         <> female . litJson "vrouw"
+  grammar =  male   . litJson "man"
+          <> female . litJson "vrouw"
 </pre>
 
 The `.` operator is from `Control.Category`. The `<>` is just another name for
-`mappend` from `Data.Monoid`.
+`mappend` from `Data.Monoid` and denotes choice.
 
 That's all! Here's how you can use these grammars:
 
@@ -114,13 +114,66 @@ instance Category Iso
 instance Monoid (Iso a b)
 ```
 
+A value of type `Iso a b` gives you a function that converts an `a` into a
+`Maybe b`, and a function that converts a `b` into a `Maybe a`. This composes
+beautifully as a `Category`. The `Monoid` instance denotes choice: first try
+the left-hand conversion function, and if it fails, try the right-hand side.
 
-= Different tree shapes =
+A JSON `grammar` for some type `a` is nothing more than a value of type `Iso
+Value a`, where `Value` is the type of a JSON AST from the
+[aeson](http://hackage.haskell.org/package/aeson) package. That is, it's a
+pair of conversion functions between JSON trees and your own datatype.
+Building JSON grammars like the one above is about composing isomorphisms that
+translate between intermediate types.
+
+The isomorphisms `person`, `male` and `female` translate between constructors and their individual fields. For example:
+
+```
+person :: Iso (String, Gender, Int, Float, Float) Person
+```
+
+Converting from a constructor to its fields might fail, because the value that
+is passed to the conversion function might be a different constructor of the
+same datatype. This is why the `Monoid` instance is so useful: we can give
+multiple grammars, usually one for each constructor, and they will be tried in
+sequence.
+
+## Stack isomorphisms
+
+There is a problem with encoding the fields of such a constructor as an
+N-tuple: if we want to compose it with other isomorphisms that handle the
+individual fields, we have to use complicated tuple projections to select the
+fields that we're interested in. Basically we have unwrapped the fields from
+one constructor only to wrap them in another one!
+
+The solution is to use heterogenous stacks of values. They are reminiscent of
+continuation-passing style, because in the way we use them they always have a
+polymorphic tail:
+
+```
+person ::
+  Iso (String :- Gender :- Int :- Float :- Float :- t) (Person :- t)
+```
+
+Have you thought about what the types of `male` and `female` would be in the
+non-stack versions of the isomorphisms? They don't have any fields; we would
+have to leave the first type parameter of `Iso` 'empty' somehow, for example
+by choosing `()`. Stack isomorphisms have no such problem; we simply make the
+first type argument the polymorphic tail on its own, without any values on
+top:
+
+```
+male   :: Iso t (Gender :- t)
+female :: Iso t (Gender :- t)
+```
+
+## Different tree shapes
 
 * Move lat/lng into their own type and show the new mapping
 
-= Future work =
+## Future work
 
 * Benchmarking
 * Supporting new use cases
 * Improved error messages
+* Compile to JSON Schema
