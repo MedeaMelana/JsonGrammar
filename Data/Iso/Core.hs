@@ -27,7 +27,7 @@ import Control.Category
 data Iso a b = Iso (a -> Maybe b) (b -> Maybe a)
 
 instance Category Iso where
-  id                    = Iso Just Just
+  id                          = Iso Just Just
   ~(Iso f1 g1) . ~(Iso f2 g2) = Iso (f1 <=< f2) (g1 >=> g2)
 
 instance Monoid (Iso a b) where
