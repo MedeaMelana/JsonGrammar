@@ -4,48 +4,49 @@
 
 module Example where
 
-import Data.Iso.Core
-import Data.Iso.TH
+import Data.Iso
 import Language.JsonGrammar
 
 import Prelude hiding (id, (.), head, either)
 import Control.Category
 
-
-data Attachment = Attachment
-  { atData        :: Maybe String
-  , atDescription :: String
-  , atType        :: AttachmentType
-  , atName        :: String
-  , atThumbnail   :: Maybe String
-  } deriving Show
-
-attachment :: Iso (Maybe String :- String :- AttachmentType :-
-  String :- Maybe String :- t) (Attachment :- t)
-attachment = $(deriveIsos ''Attachment)
+import Data.Aeson (Object)
 
 
-data AttachmentType = AttVideo | AttImage | AttHtml
-  deriving Show
+data Person = Person
+  { name     :: String
+  , gender   :: Gender
+  , age      :: Int
+  -- , lat      :: Float
+  -- , lng      :: Float
+  , location :: Coords
+  } deriving (Eq, Show)
 
-attVideo :: Iso a (AttachmentType :- a)
-attImage :: Iso a (AttachmentType :- a)
-attHtml  :: Iso a (AttachmentType :- a)
-(attVideo, attImage, attHtml) = $(deriveIsos ''AttachmentType)
+data Gender = Male | Female
+  deriving (Eq, Show)
+
+data Coords = Coords { lat :: Float, lng :: Float }
+  deriving (Eq, Show)
+
+person         = $(deriveIsos ''Person)
+(male, female) = $(deriveIsos ''Gender)
+coords         = $(deriveIsos ''Coords)
 
 
--- Json grammars
-
-instance Json Attachment where
-  grammar = attachment . object
-    ( prop "data"
-    . prop "description"
-    . prop "type"
-    . prop "name"
-    . prop "thumbnail"
+instance Json Person where
+  grammar = person . object
+    ( prop "naam"
+    . prop "geslacht"
+    . prop "leeftijd"
+    . coordsProps
     )
 
-instance Json AttachmentType where
-  grammar = attVideo . litJson "video"
-         <> attImage . litJson "image"
-         <> attHtml  . litJson "html"
+instance Json Gender where
+  grammar = male   . litJson "man"
+         <> female . litJson "vrouw"
+
+coordsProps :: Iso (Object :- t) (Object :- Coords :- t)
+coordsProps = duck coords . prop "lat" . prop "lng"
+
+anna :: Person
+anna = Person "Anna" Female 36 (Coords 53.0163038 5.1993053)
