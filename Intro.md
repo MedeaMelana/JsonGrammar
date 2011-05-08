@@ -25,10 +25,10 @@ work for you!""*
 This is true, but they also make all the choices for you about how your
 datatypes should map to JSON. Usually they assume the names of your record
 fields map directly to JSON property names. The shapes of your family of
-datatypes need to correspond directly to how the objects in JSON are nested.
-So these libraries give you the choice: either you write out `fromJson` and
-`toJson` by hand and have full control over the mapping, or you give up this
-control and let Template Haskell do all the work for you.
+datatypes need to correspond to how the objects in JSON are nested. These
+libraries give you the choice: either you write out `fromJson` and `toJson` by
+hand and have full control over the mapping, or you give up this control and
+let Template Haskell do all the work for you.
 
 JsonGrammar gives you the best of both worlds: it gives you full control over
 what the mapping should be, with an API that lets you define `fromJson` and
@@ -41,7 +41,7 @@ latter is provided by the programmer.
 
 Suppose we have these two datatypes describing people:
 
-```haskell
+```
 data Person = Person
   { name   :: String
   , gender :: Gender
@@ -63,7 +63,7 @@ JsonGrammar.
 The first step is to have Template Haskell derive the constructor-destructor
 pairs:
 
-```haskell
+```
 person         = $(deriveIsos ''Person)
 (male, female) = $(deriveIsos ''Gender)
 ```
@@ -90,9 +90,10 @@ instance Json Gender where
 The `.` operator is from `Control.Category`. The `<>` is just another name for
 `mappend` from `Data.Monoid` and denotes choice.
 
-That's all! Here's how you can use these grammars:
+That's all! We have just defined both `fromJson` and `toJson` in one simple
+definition. Here's how you can use these grammars:
 
-```haskell
+```
 > let anna = Person "Anna" Female 36 53.0163038 5.1993053
 > let Just annaJson = toJson anna annaJson
 Object (fromList [("geslacht",String "vrouw"),("lat",Number
@@ -155,10 +156,16 @@ person ::
   Iso (String :- Gender :- Int :- Float :- Float :- t) (Person :- t)
 ```
 
+Read `:-` as 'cons', but then for types instead of values. Its definition is simple:
+
+```
+data h :- t = h :- t
+```
+
 Have you thought about what the types of `male` and `female` would be in the
 non-stack versions of the isomorphisms? They don't have any fields; we would
-have to leave the first type parameter of `Iso` 'empty' somehow, for example
-by choosing `()`. Stack isomorphisms have no such problem; we simply make the
+have to leave the first type parameter of `Iso` empty somehow, for example by
+choosing `()`. Stack isomorphisms have no such problem; we simply make the
 first type argument the polymorphic tail on its own, without any values on
 top:
 
@@ -167,9 +174,63 @@ male   :: Iso t (Gender :- t)
 female :: Iso t (Gender :- t)
 ```
 
+Stack isomorphisms compose beautifully using `.`, often without needing any
+special projection functions. To get a feeling for it, try compiling the
+example Json grammars and looking at the types of the individual components.
+
+I lied when I told you grammars have type `Iso Value a`; they actually use
+stacks themselves, too. Here is the true definition of the `Json` type class:
+
+```
+class Json a where
+  grammar :: Iso (Value :- t) (a :- t)
+```
+
 ## Different tree shapes
 
-* Move lat/lng into their own type and show the new mapping
+Let's take our Person example and make a small modification. We decide that
+because (lat, lng)-pairs are so common together, we'd like to put them
+together in their own datatype:
+
+```
+data Coords = Coords { lat :: Float, lng :: Float }
+  deriving (Eq, Show)
+
+data Person = Person
+  { name     :: String
+  , gender   :: Gender
+  , age      :: Int
+  , location :: Coords
+  } deriving (Eq, Show)
+```
+
+Suppose, tho, that we cannot change the JSON because we have no control over
+it. With JsonGrammar we can express mappings where the nesting is not
+one-to-one:
+
+```
+instance Json Person where
+  grammar = person . object
+    ( prop "naam"
+    . prop "geslacht"
+    . prop "leeftijd"
+    . coordsProps
+    )
+
+coordsProps :: Iso (Object :- t) (Object :- Coords :- t)
+coordsProps = duck coords . prop "lat" . prop "lng"
+```
+
+Here `duck coords` quickly wraps (or unwraps, depending on the direction) the
+two matched `Float` properties in their own `Coords` constructor before
+continuing matching the other properties in an object. Function `duck` is a
+combinator that makes a grammar (`coords` in this case) work one element down
+the stack. Here it makes sure the top values can remain `Object`s, which is
+needed by `prop`.
+
+What is important to note here is not only that we can express mappings with
+different nestings, we can also capture this behaviour in its own grammar for
+reuse. JsonGrammar allows this level of modularity in everything it does.
 
 ## Future work
 
@@ -177,3 +238,8 @@ female :: Iso t (Gender :- t)
 * Supporting new use cases
 * Improved error messages
 * Compile to JSON Schema
+
+## Related work
+
+* zwaluw
+* invertible-syntax
