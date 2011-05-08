@@ -7,7 +7,7 @@
 module Language.JsonGrammar (
   -- * Constructing JSON grammars
   liftAeson, option, greedyOption, array,
-  propBy, rawFixedProp, object,
+  propBy, rawFixedProp, rest, ignoreRest, object,
   
   -- * Type-directed conversion
   Json(..), fromJson, toJson, litJson, prop, fixedProp
@@ -28,6 +28,7 @@ import Data.Aeson.Types (parseMaybe)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.String
+import Data.Text (Text)
 import qualified Data.Vector as V
 
 
@@ -97,6 +98,14 @@ rawFixedProp name value = stack (Iso from to)
     to o = do
       guard (M.notMember textName o)
       return (M.insert textName value o)
+
+-- | Collect all properties left in an object.
+rest :: Iso (Object :- t) (Object :- M.Map Text Value :- t)
+rest = lit M.empty
+
+-- | Match and discard all properties left in the object. When converting back to JSON, produces no properties.
+ignoreRest :: Iso (Object :- t) (Object :- t)
+ignoreRest = lit M.empty . inverse (ignoreWithDefault M.empty)
 
 -- | Wrap an exhaustive bunch of properties in an object. Typical usage:
 -- 

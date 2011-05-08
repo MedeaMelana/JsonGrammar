@@ -6,7 +6,8 @@ module Data.Iso.Core (
   Iso(..), convert, inverse, (<>),
   
   -- * Stack-based isomorphisms
-  (:-)(..), stack, unstack, swap, duck, lit, inverseLit
+  (:-)(..), stack, unstack, swap, duck,
+  lit, inverseLit, matchWithDefault, ignoreWithDefault
   
   ) where
 
@@ -53,6 +54,7 @@ inverse (Iso f g) = Iso g f
 
 -- | Heterogenous stack with a head and a tail.
 data h :- t = h :- t
+  deriving (Eq, Show)
 infixr 5 :-
 
 head :: (h :- t) -> h
@@ -94,3 +96,18 @@ lit x = Iso f g
 -- | Inverse of 'lit'.
 inverseLit :: Eq a => a -> Iso (a :- t) t
 inverseLit = inverse . lit
+
+-- | When converting from left to right, push the default value on top of the
+-- stack. When converting from right to left, pop the value, make sure it
+-- matches the predicate and then discard it.
+matchWithDefault :: (a -> Bool) -> a -> Iso t (a :- t)
+matchWithDefault p x = Iso f g
+  where
+    f t = Just (x :- t)
+    g (x' :- t) = do
+      guard (p x')
+      return t
+
+-- | When converting from left to right, push the default value on top of the stack. When converting from right to left, pop the value and discard it.
+ignoreWithDefault :: a -> Iso t (a :- t)
+ignoreWithDefault = matchWithDefault (const True)
