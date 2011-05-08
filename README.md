@@ -1,8 +1,8 @@
 # Introducing JsonGrammar
 
 The first version of JsonGrammar has just been released on Hackage!
-JsonGrammar offers an API for converting between your own datatypes and JSON
-ASTs.
+JsonGrammar offers an API for converting between your own datatypes and
+[JSON](http://en.wikipedia.org/wiki/JSON) ASTs.
 
 *"What, another JSON library? Don't we have enough already?"*
 
@@ -39,7 +39,8 @@ latter is provided by the programmer.
 
 ## An example
 
-Suppose we have these two datatypes describing people:
+Suppose we have these two datatypes describing people and their current
+location:
 
 ```
 data Person = Person
@@ -84,7 +85,7 @@ instance Json Person where
 
 instance Json Gender where
   grammar =  male   . litJson "man"
-          <> female . litJson "vrouw"
+          &lt;&gt; female . litJson "vrouw"
 </pre>
 
 The `.` operator is from `Control.Category`. The `<>` is just another name for
