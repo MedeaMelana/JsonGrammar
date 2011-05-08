@@ -1,0 +1,120 @@
+## Introducing JsonGrammar
+
+The first version of `JsonGrammar` has just been released on Hackage!
+`JsonGrammar` offers an API for converting between your own datatypes and JSON
+ASTs.
+
+*What, another JSON library? Don't we have enough already?*
+
+It's true that there are already a few JSON libraries out there. These
+libraries, however, require you to write fromJson and toJson separately.
+
+*Uhm, yes... is that bad?*
+
+Yes. It violates the [DRY
+principle](http://en.wikipedia.org/wiki/Don%27t_repeat_yourself). If I show
+you an implementation of `fromJson` for a certain type, you can write a
+corresponding `toJson` without requiring any further information. Similarly,
+if I show you an implementation of `toJson`, you can write the accompanying
+`fromJson`. Writing down the same thing twice is tedious and opens up the
+possibility to make mistakes.
+
+*Most of these libraries offer Template Haskell support that does this work
+for you!*
+
+This is true, but they also make all the choices for you about how your
+datatypes should map to JSON. Usually they assume the names of your record
+fields map directly to JSON property names. The shapes of your family of
+datatypes need to correspond directly to how the objects in JSON are nested.
+
+So these libraries give you the choice: either you write out `fromJson` and
+`toJson` by hand and have full control over the mapping, or you give up this
+control and let Template Haskell do all the work for you.
+
+`JsonGrammar` gives you the best of both worlds: it gives you full control
+over what the mapping should be, with an API that lets you define `fromJson`
+and `toJson` at the same time. It achieves this by separating the
+constructing/destructing of datatype constructors and its fields from the
+description of the JSON values. The former is derived by Template Haskell, the
+latter is provided by the programmer.
+
+## An example
+
+Suppose we have these two datatypes describing people:
+
+```haskell
+data Person = Person
+  { name   :: String
+  , gender :: Gender
+  , age    :: Int
+  , lat    :: Float
+  , lng    :: Float
+  }
+
+data Gender = Male | Female
+```
+
+Sadly, the JSON source we are communicating with is using JSON with Dutch
+property names and values, so we cannot use Template Haskell to derive the
+JSON mapping for us, like we would do with other JSON libraries. Neither do we
+want to use Dutch names for our record selectors; nobody would be able to
+understand our code anymore! Fortunately this isn't a problem with
+JsonGrammar.
+
+The first step is to have Template Haskell derive the constructor-destructor pairs:
+
+```haskell
+person         = $(deriveIsos ''Person)
+(male, female) = $(deriveIsos ''Gender)
+```
+
+Then we write instances of the `Json` type class to define the mapping from/to
+Json:
+
+<pre>
+instance Json Person where
+  grammar = person . object
+    ( prop "naam"
+    . prop "geslacht"
+    . prop "leeftijd"
+    . prop "lat"
+    . prop "lng"
+    )
+
+instance Json Gender where
+  grammar = male   . litJson "man"
+         <> female . litJson "vrouw"
+</pre>
+
+That's all! Here's how you can use these grammars:
+
+```haskell
+> let anna = Person "Anna" Female 36 53.0163038 5.1993053
+> let Just annaJson = toJson anna
+> annaJson
+Object (fromList [("geslacht",String "vrouw"),("lat",Number 53.01630401611328),("leeftijd",Number 36),("lng",Number 5.199305534362793),("naam",String "Anna")])
+> fromJson annaJson :: Maybe Person
+Just (Person {name = "Anna", gender = Female, age = 36, lat = 53.016304, lng = 5.1993055})
+```
+
+## Show me the types!
+
+I've shown you how to use the library, but I haven't shown you any types. The library is based on partial isomorphisms:
+
+```
+data Iso a b = Iso (a -> Maybe b) (b -> Maybe a)
+
+instance Category Iso
+instance Monoid (Iso a b)
+```
+
+
+= Different tree shapes =
+
+* Move lat/lng into their own type and show the new mapping
+
+= Future work =
+
+* Benchmarking
+* Supporting new use cases
+* Improved error messages
