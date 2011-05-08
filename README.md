@@ -184,7 +184,7 @@ Stack isomorphisms compose beautifully using `.`, often without needing any
 special projection functions. To get a feeling for it, try compiling the
 example Json grammars and looking at the types of the individual components.
 
-We lied when we wrote that grammars have type `Iso Value a`; they actually use
+I lied when I wrote that grammars have type `Iso Value a`; they actually use
 stacks themselves, too. Here is the true definition of the `Json` type class:
 
 ```
@@ -266,3 +266,7 @@ Although JsonGrammar is usable, there is still work to be done:
 * **Benchmarking**. No performance testing or memory usage profiling has been done yet.
 * **Improved error messages**. The `Maybe` return values indicate whenever conversion has failed, but never *how* it has failed. The `aeson` package gives nice error message when for example an expected property was not found. Such error reporting still has to be added to JsonGrammar.
 * **Other experiments**. Perhaps a library can be written on top of JsonGrammar that allows grammars to be specified that also compile to JSON Schema.
+
+If you have any questions, comments, ideas or bug reports, feel to leave a
+comment or [open a ticket on
+GitHub](https://github.com/MedeaMelana/JsonGrammar/issues/new).
