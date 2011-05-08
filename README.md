@@ -153,8 +153,7 @@ continuation-passing style, because in the way we use them they usually have a
 polymorphic tail:
 
 ```
-person ::
-  Iso (String :- Gender :- Int :- Float :- Float :- t) (Person :- t)
+person :: Iso (String :- Gender :- Int :- Float :- Float :- t) (Person :- t)
 ```
 
 Read `:-` as 'cons', but then for types instead of values. Its definition is simple:
