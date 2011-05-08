@@ -138,6 +138,9 @@ instance Json a => Json (Maybe a) where
 instance (Json a, Json b) => Json (Either a b) where
   grammar = either grammar grammar
 
+instance Json Value where
+  grammar = id
+
 unsafeToJson :: Json a => String -> a -> Value
 unsafeToJson context value =
     fromMaybe err (convert (inverse (unstack grammar)) value)
