@@ -210,7 +210,7 @@ data Person = Person
   } deriving (Eq, Show)
 ```
 
-However, suppose that for this example's sake have no control over the JSON
+However, suppose that for this example's sake we have no control over the JSON
 format and cannot change it to match our new structure. With JsonGrammar we
 can express mappings where the nesting is not one-to-one:
 
