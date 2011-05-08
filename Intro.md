@@ -1,15 +1,15 @@
-## Introducing JsonGrammar
+# Introducing JsonGrammar
 
 The first version of `JsonGrammar` has just been released on Hackage!
 `JsonGrammar` offers an API for converting between your own datatypes and JSON
 ASTs.
 
-*What, another JSON library? Don't we have enough already?*
+*"What, another JSON library? Don't we have enough already?"*
 
 It's true that there are already a few JSON libraries out there. These
-libraries, however, require you to write fromJson and toJson separately.
+libraries, however, require you to write `fromJson` and `toJson` separately.
 
-*Uhm, yes... is that bad?*
+*"Uhm, yes... is that bad?"*
 
 Yes. It violates the [DRY
 principle](http://en.wikipedia.org/wiki/Don%27t_repeat_yourself). If I show
@@ -19,14 +19,13 @@ if I show you an implementation of `toJson`, you can write the accompanying
 `fromJson`. Writing down the same thing twice is tedious and opens up the
 possibility to make mistakes.
 
-*Most of these libraries offer Template Haskell support that does this work
-for you!*
+*"But most of these libraries offer Template Haskell support that does this
+work for you!""*
 
 This is true, but they also make all the choices for you about how your
 datatypes should map to JSON. Usually they assume the names of your record
 fields map directly to JSON property names. The shapes of your family of
 datatypes need to correspond directly to how the objects in JSON are nested.
-
 So these libraries give you the choice: either you write out `fromJson` and
 `toJson` by hand and have full control over the mapping, or you give up this
 control and let Template Haskell do all the work for you.
@@ -61,7 +60,8 @@ want to use Dutch names for our record selectors; nobody would be able to
 understand our code anymore! Fortunately this isn't a problem with
 JsonGrammar.
 
-The first step is to have Template Haskell derive the constructor-destructor pairs:
+The first step is to have Template Haskell derive the constructor-destructor
+pairs:
 
 ```haskell
 person         = $(deriveIsos ''Person)
@@ -69,7 +69,8 @@ person         = $(deriveIsos ''Person)
 ```
 
 Then we write instances of the `Json` type class to define the mapping from/to
-Json:
+Json. The order in which the properties are listed matches that of the fields
+in the datatype:
 
 <pre>
 instance Json Person where
@@ -86,16 +87,21 @@ instance Json Gender where
          <> female . litJson "vrouw"
 </pre>
 
+The `.` operator is from `Control.Category`. The `<>` is just another name for
+`mappend` from `Data.Monoid`.
+
 That's all! Here's how you can use these grammars:
 
 ```haskell
 > let anna = Person "Anna" Female 36 53.0163038 5.1993053
-> let Just annaJson = toJson anna
-> annaJson
-Object (fromList [("geslacht",String "vrouw"),("lat",Number 53.01630401611328),("leeftijd",Number 36),("lng",Number 5.199305534362793),("naam",String "Anna")])
+> let Just annaJson = toJson anna annaJson
+Object (fromList [("geslacht",String "vrouw"),("lat",Number
+53.01630401611328),("leeftijd",Number 36),("lng",Number
+5.199305534362793),("naam",String "Anna")])
 > fromJson annaJson :: Maybe Person
-Just (Person {name = "Anna", gender = Female, age = 36, lat = 53.016304, lng = 5.1993055})
-```
+Just (Person {name = "Anna", gender = Female, age = 36, lat = 53.016304,
+lng = 5.1993055})
+````````````````````````````````````````````````````````````````````````
 
 ## Show me the types!
 
