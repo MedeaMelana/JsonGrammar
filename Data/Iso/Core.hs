@@ -3,7 +3,7 @@
 module Data.Iso.Core (
 
   -- * Partial isomorphisms
-  Iso(..), convert, inverse, (<>),
+  Iso(..), convert, inverse,
   
   -- * Stack-based isomorphisms
   (:-)(..), stack, unstack, swap, duck,
@@ -15,6 +15,7 @@ module Data.Iso.Core (
 import Prelude hiding (id, (.), head)
 
 import Data.Monoid
+import Data.Semigroup
 
 import Control.Applicative
 import Control.Monad
@@ -37,10 +38,8 @@ instance Monoid (Iso a b) where
       ((<|>) <$> f1 <*> f2)
       ((<|>) <$> g1 <*> g2)
 
-infixl 3 <>
--- | Synonym for mappend.
-(<>) :: Monoid a => a -> a -> a
-(<>) = mappend
+instance Semigroup (Iso a b) where
+  (<>) = mappend
 
 -- | Apply an isomorphism in one direction.
 convert :: Iso a b -> a -> Maybe b

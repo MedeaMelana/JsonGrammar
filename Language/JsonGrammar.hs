@@ -14,9 +14,7 @@ module Language.JsonGrammar (
   
   ) where
 
-import Data.Iso.Core
-import Data.Iso.TH
-import Data.Iso.Common
+import Data.Iso hiding (option)
 
 import Prelude hiding (id, (.), head, maybe, either)
 

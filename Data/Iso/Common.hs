@@ -28,6 +28,8 @@ import Control.Category
 import Data.Iso.Core
 import Data.Iso.TH
 
+import Data.Semigroup
+
 
 unit :: Iso t (() :- t)
 unit = Iso f g

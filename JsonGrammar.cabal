@@ -28,6 +28,7 @@ Library
   Build-Depends:    base >= 3.0 && < 4.4,
                     containers >= 0.3 && < 0.5,
                     aeson >= 0.3 && < 0.4,
+                    semigroups >= 0.5 && < 0.6,
                     template-haskell >= 2.4 && < 2.6,
                     -- constraints copied from aeson-0.3.2.5:
                     text >= 0.11.0.2,
