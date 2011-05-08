@@ -241,21 +241,22 @@ reuse. JsonGrammar allows this level of modularity in everything it does.
 ## History and related work
 
 The ideas behind JsonGrammar go back a bit. They are based on
-[Zwaluw](https://github.com/MedeaMelana/Zwaluw), which is a library for
-writing bidirectional parsers/pretty-printers for type-safe URLs, also in a
-DRY manner. Zwaluw, too, uses stacks to achieve a high level of modularity. In
-turn, Zwaluw was inspired by
-[HoleyMonoid](http://hackage.haskell.org/package/HoleyMonoid), which shows
-that the CPS-like manner of using polymorphic stack tails allows combinators
-to build up a list of expected arguments for use in printf-like functionality.
+[Zwaluw](https://github.com/MedeaMelana/Zwaluw), a library that Sjoerd
+Visscher and I worked on. The library aids in writing bidirectional
+parsers/pretty-printers for type-safe URLs, also in a DRY manner. Zwaluw, too,
+uses stacks to achieve a high level of modularity. In turn, Zwaluw was
+inspired by [HoleyMonoid](http://hackage.haskell.org/package/HoleyMonoid),
+which shows that the CPS-like manner of using polymorphic stack tails allows
+combinators to build up a list of expected arguments for use in printf-like
+functionality.
 
 The `Iso` datatype comes from
 [partial-isomorphisms](http://hackage.haskell.org/package/partial-isomorphisms)
 and is described in more detail in [Invertible syntax descriptions: Unifying
 parsing and pretty
-printing](http://www.informatik.uni-marburg.de/~rendel/unparse/). They also
-use stacks (in the form of nested binary tuples), but they are not using the
-trick with the polymorphic tail (yet?).
+printing](http://www.informatik.uni-marburg.de/~rendel/unparse/) by Tillmann
+Rendel and Klaus Ostermann. They also use stacks (in the form of nested binary
+tuples), but they are not using the trick with the polymorphic tail (yet?).
 
 ## Future work
 
