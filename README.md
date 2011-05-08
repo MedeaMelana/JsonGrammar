@@ -149,7 +149,7 @@ fields that we're interested in. Basically we have unwrapped the fields from
 one constructor only to wrap them in another one!
 
 The solution is to use heterogenous stacks of values. They are reminiscent of
-continuation-passing style, because in the way we use them they always have a
+continuation-passing style, because in the way we use them they usually have a
 polymorphic tail:
 
 ```
@@ -227,12 +227,12 @@ coordsProps :: Iso (Object :- t) (Object :- Coords :- t)
 coordsProps = duck coords . prop "lat" . prop "lng"
 ```
 
-Here `duck coords` quickly wraps (or unwraps, depending on the direction) the
-two matched `Float` properties in their own `Coords` constructor before
-continuing matching the other properties in an object. Function `duck` is a
-combinator that makes a grammar (`coords` in this case) work one element down
-the stack. Here it makes sure the top values can remain `Object`s, which is
-needed by `prop`.
+Here `duck coords` wraps (or unwraps, depending on the direction) the two
+matched `Float` properties in their own `Coords` constructor before continuing
+matching the other properties in an object. Function `duck` is a combinator
+that makes a grammar (`coords` in this case) work one element down the stack.
+Here it makes sure the top values can remain `Object`s, which is needed by
+`prop` to build/destruct JSON objects one property at a time.
 
 What is important to note here is that not only can we express mappings with
 different nestings, we can also capture this behaviour in its own grammar for
@@ -240,10 +240,11 @@ reuse. JsonGrammar allows this level of modularity in everything it does.
 
 ## History and related work
 
-The ideas behind JsonGrammar go back a bit. They are based on Zwaluw, which is
-a library for writing bidirectional parsers/pretty-printers for type-safe
-URLs, also in a DRY manner. Zwaluw, too, uses stacks to achieve a high level
-of modularity. In turn, Zwaluw was inspired by
+The ideas behind JsonGrammar go back a bit. They are based on
+[Zwaluw](https://github.com/MedeaMelana/Zwaluw), which is a library for
+writing bidirectional parsers/pretty-printers for type-safe URLs, also in a
+DRY manner. Zwaluw, too, uses stacks to achieve a high level of modularity. In
+turn, Zwaluw was inspired by
 [HoleyMonoid](http://hackage.haskell.org/package/HoleyMonoid), which shows
 that the CPS-like manner of using polymorphic stack tails allows combinators
 to build up a list of expected arguments for use in printf-like functionality.
@@ -252,11 +253,15 @@ The `Iso` datatype comes from
 [partial-isomorphisms](http://hackage.haskell.org/package/partial-isomorphisms)
 and is described in more detail in [Invertible syntax descriptions: Unifying
 parsing and pretty
-printing](http://www.informatik.uni-marburg.de/~rendel/unparse/).
+printing](http://www.informatik.uni-marburg.de/~rendel/unparse/). They also
+use stacks (in the form of nested binary tuples), but they are not using the
+trick with the polymorphic tail (yet?).
 
 ## Future work
 
-* Benchmarking
-* Supporting new use cases
-* Improved error messages
-* Compile to JSON Schema
+Although JsonGrammar is usable, there is still work to be done:
+
+* **Supporting new use cases**. JsonGrammar has not been used in the wild much yet. If you find any use cases that the library currently does not support, please let me know!
+* **Benchmarking**. No performance testing or memory usage profiling has been done yet.
+* **Improved error messages**. The `Maybe` return values indicate whenever conversion has failed, but never *how* it has failed. The `aeson` package gives nice error message when for example an expected property was not found. Such error reporting still has to be added to JsonGrammar.
+* **Other experiments**. Perhaps a library can be written on top of JsonGrammar that allows grammars to be specified that also compile to JSON Schema.
