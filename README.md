@@ -1,8 +1,8 @@
 # Introducing JsonGrammar
 
-The first version of JsonGrammar has just been released on Hackage!
-JsonGrammar offers an API for converting between your own datatypes and
-[JSON](http://en.wikipedia.org/wiki/JSON) ASTs.
+JsonGrammar is a Haskll library for converting between Haskell datatypes and
+[JSON](http://en.wikipedia.org/wiki/JSON) ASTs. See the [API documentation on
+Hackage](http://hackage.haskell.org/package/JsonGrammar).
 
 *"What, another JSON library? Don't we have enough already?"*
 
@@ -36,6 +36,14 @@ what the mapping should be, with an API that lets you define `fromJson` and
 constructing/destructing of datatype constructors and its fields from the
 description of the JSON values. The former is derived by Template Haskell, the
 latter is provided by the programmer.
+
+## Design principles
+
+* Write JSON *grammars* that specify bidirectional conversion between JSON and Haskell datatypes
+* Grammars are succinct yet flexible
+* Adapt to existing JSON formats
+* Adapt to existing Haskell datatypes
+* Highly modular
 
 ## An example
 
