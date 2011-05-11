@@ -1,6 +1,6 @@
 # Introducing JsonGrammar
 
-JsonGrammar is a Haskll library for converting between Haskell datatypes and
+JsonGrammar is a Haskell library for converting between Haskell datatypes and
 [JSON](http://en.wikipedia.org/wiki/JSON) ASTs. See the [API documentation on
 Hackage](http://hackage.haskell.org/package/JsonGrammar).
 
