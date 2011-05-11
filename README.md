@@ -272,7 +272,7 @@ Although JsonGrammar is usable, there is still work to be done:
 * **Supporting new use cases**. JsonGrammar has not been used in the wild much yet. If you find any use cases that the library currently does not support, please let me know!
 * **Benchmarking**. No performance testing or memory usage profiling has been done yet.
 * **Improved error messages**. The `Maybe` return values indicate whenever conversion has failed, but never *how* it has failed. The `aeson` package gives nice error message when for example an expected property was not found. Such error reporting still has to be added to JsonGrammar.
-* **Other experiments**. Perhaps a library can be written on top of JsonGrammar that allows grammars to be specified that also compile to JSON Schema.
+* **Other experiments**. Perhaps a library can be written on top of JsonGrammar that allows grammars to be specified that also compile to JSON Schema. Or maybe grammars could compile to specialized JSON parsers, improving efficiency.
 
 If you have any questions, comments, ideas or bug reports, feel to leave a
 comment or [open a ticket on
