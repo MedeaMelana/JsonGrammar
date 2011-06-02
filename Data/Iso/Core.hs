@@ -3,7 +3,7 @@
 module Data.Iso.Core (
 
   -- * Partial isomorphisms
-  Iso(..), convert, inverse,
+  Iso(..), convert, inverse, many,
   
   -- * Stack-based isomorphisms
   (:-)(..), stack, unstack, swap, duck,
@@ -17,7 +17,7 @@ import Prelude hiding (id, (.), head)
 import Data.Monoid
 import Data.Semigroup
 
-import Control.Applicative
+import Control.Applicative hiding (many)
 import Control.Monad
 import Control.Category
 
@@ -48,6 +48,12 @@ convert (Iso f _) = f
 -- | Inverse of an isomorphism.
 inverse :: Iso a b -> Iso b a
 inverse (Iso f g) = Iso g f
+
+many :: Iso a a -> Iso a a
+many (Iso f g) = Iso manyF manyG
+  where
+    manyF = ((<|>) <$> (f >=> manyF) <*> Just)
+    manyG = ((<|>) <$> (g >=> manyG) <*> Just)
 
 
 -- Stack-based isomorphisms

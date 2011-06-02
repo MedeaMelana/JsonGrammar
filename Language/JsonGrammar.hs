@@ -10,7 +10,7 @@ module Language.JsonGrammar (
   propBy, rawFixedProp, rest, ignoreRest, object,
   
   -- * Type-directed conversion
-  Json(..), fromJson, toJson, litJson, prop, fixedProp
+  Json(..), fromJson, toJson, litJson, prop, fixedProp, element
   
   ) where
 
@@ -28,6 +28,8 @@ import Data.Maybe (fromMaybe)
 import Data.String
 import Data.Text (Text)
 import qualified Data.Vector as V
+import qualified Data.Vector.Generic as VG
+import qualified Data.Vector.Fusion.Stream as VS
 
 
 aeObject :: Iso (Object :- t) (Value :- t)
@@ -54,19 +56,43 @@ option g = just . g <> nothing . inverse aeNull
 greedyOption :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
 greedyOption g = nothing . inverse aeNull <> just . g
 
--- | Describe an array whose elements match the given grammar.
-array :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) ([a] :- t)
-array g = inverse aeArray >>> vectorList >>> elements
+-- | Convert between a JSON array and Haskell list of arbitrary lengts. The
+-- elements are converted using the argument grammar.
+list :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) ([a] :- t)
+list g = duck nil >>> array (many single)
   where
-    elements = (inverse cons >>> swap >>> duck g >>> swap >>>
-                  duck elements >>> cons)
-            <> (inverse nil >>> nil)
+    -- With ScopedTypeVariables:
+    -- single :: Iso ([Value] :- [a] :- t) ([Value] :- [a] :- t)
+    single = swap                -- [a] :- [Value] :- t
+         >>> duck (elementBy g)  -- [a] :- [Value] :- a :- t
+         >>> swap                -- [Value] :- [a] :- a :- t
+         >>> duck swap           -- [Value] :- a :- [a] :- t
+         >>> duck cons           -- [Value] :- [a] :- t
 
-vectorList :: Iso (V.Vector a :- t) ([a] :- t)
-vectorList = stack (Iso f g)
+-- | Wrap a bunch of elements in a JSON array. For example, to match an array of exactly length two:
+--
+-- > array (element . element)
+--
+-- Or to match an empty array:
+--
+-- > array id
+array :: Iso ([Value] :- t1) ([Value] :- t2) -> Iso (Value :- t1) t2
+array els = inverse aeArray    -- Vector Value :- t1
+        >>> vectorReverseList  -- [Value] :- t1
+        >>> els                -- [Value] :- t2
+        >>> inverse nil        -- t2
+
+elementBy :: Iso (Value :- t) (a :- t) ->
+  Iso ([Value] :- t) ([Value] :- a :- t)
+elementBy g = inverse cons  -- Value   :- [Value] :- t
+          >>> swap          -- [Value] :- Value :- t
+          >>> duck g        -- [Value] :- a :- t
+
+vectorReverseList :: Iso (V.Vector a :- t) ([a] :- t)
+vectorReverseList = stack (Iso f g)
   where
-    f = Just . V.toList
-    g = Just . V.fromList
+    f = Just . VS.toList    . VG.streamR
+    g = Just . VG.unstreamR . VS.fromList
 
 
 -- | Describe a property with the given name and value grammar.
@@ -119,7 +145,7 @@ class Json a where
   grammar :: Iso (Value :- t) (a :- t)
 
 instance Json a => Json [a] where
-  grammar = array grammar
+  grammar = list grammar
 
 instance Json Bool where
   grammar = liftAeson
@@ -174,3 +200,6 @@ prop = propBy grammar
 -- | Expect a specific key/value pair.
 fixedProp :: Json a => String -> a -> Iso (Object :- t) (Object :- t)
 fixedProp name value = rawFixedProp name (unsafeToJson "fixedProp" value)
+
+element :: Json a => Iso ([Value] :- t) ([Value] :- a :- t)
+element = elementBy grammar
