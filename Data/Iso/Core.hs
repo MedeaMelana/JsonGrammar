@@ -49,6 +49,7 @@ convert (Iso f _) = f
 inverse :: Iso a b -> Iso b a
 inverse (Iso f g) = Iso g f
 
+-- | Apply an isomorphism as many times as possible, greedily.
 many :: Iso a a -> Iso a a
 many (Iso f g) = Iso manyF manyG
   where

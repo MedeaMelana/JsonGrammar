@@ -6,7 +6,7 @@
 
 module Language.JsonGrammar (
   -- * Constructing JSON grammars
-  liftAeson, option, greedyOption, array,
+  liftAeson, option, greedyOption, list, elementBy, array,
   propBy, rawFixedProp, rest, ignoreRest, object,
   
   -- * Type-directed conversion
@@ -82,6 +82,7 @@ array els = inverse aeArray    -- Vector Value :- t1
         >>> els                -- [Value] :- t2
         >>> inverse nil        -- t2
 
+-- | Describe a single array element with the given grammar.
 elementBy :: Iso (Value :- t) (a :- t) ->
   Iso ([Value] :- t) ([Value] :- a :- t)
 elementBy g = inverse cons  -- Value   :- [Value] :- t
@@ -201,5 +202,7 @@ prop = propBy grammar
 fixedProp :: Json a => String -> a -> Iso (Object :- t) (Object :- t)
 fixedProp name value = rawFixedProp name (unsafeToJson "fixedProp" value)
 
+-- | Describe a single array element whose grammar is given by a 'Json'
+-- instance.
 element :: Json a => Iso ([Value] :- t) ([Value] :- a :- t)
 element = elementBy grammar
