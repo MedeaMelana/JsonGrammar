@@ -7,6 +7,12 @@ module Data.Iso.Common (
 
   -- * @()@
   unit,
+  
+  -- * @(,)@
+  tup,
+  
+  -- * @(,,)@
+  tup3,
 
   -- * @Maybe a@
   nothing, just, maybe,
@@ -37,6 +43,17 @@ unit = Iso f g
     f       t  = Just (() :- t)
     g (_ :- t) = Just t
 
+tup :: Iso (a :- b :- t) ((a, b) :- t)
+tup = Iso f g
+  where
+    f (a :- b :- t) = Just ((a, b) :- t)
+    g ((a, b) :- t) = Just (a :- b :- t)
+
+tup3 :: Iso (a :- b :- c :- t) ((a, b, c) :- t)
+tup3 = Iso f g
+  where
+    f (a :- b :- c :- t) = Just ((a, b, c) :- t)
+    g ((a, b, c) :- t) = Just (a :- b :- c :- t)
 
 nothing :: Iso t (Maybe a :- t)
 just    :: Iso (a :- t) (Maybe a :- t)
