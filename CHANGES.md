@@ -1,5 +1,9 @@
 # Release notes
 
+## 0.3, released 2011-08-12
+
+* Added more Json instances for common datatypes (lifting from aeson).
+
 ## 0.2, released 2011-06-18
 
 * Added combinators `elementBy` and `array` for matching arrays of specific length, with control over the types of individual array elements.
