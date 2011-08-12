@@ -31,7 +31,10 @@ Library
                     semigroups >= 0.5 && < 0.6,
                     template-haskell >= 2.4 && < 2.6,
                     -- constraints copied from aeson-0.3.2.5:
+                    attoparsec >= 0.8.5.3,
+                    bytestring,
                     text >= 0.11.0.2,
+                    time,
                     vector >= 0.7
 
 Source-Repository head

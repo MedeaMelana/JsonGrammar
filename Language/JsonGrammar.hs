@@ -14,22 +14,29 @@ module Language.JsonGrammar (
   
   ) where
 
-import Data.Iso hiding (option)
-
 import Prelude hiding (id, (.), head, maybe, either)
-
-import Control.Category
-import Control.Monad
 
 import Data.Aeson hiding (object)
 import Data.Aeson.Types (parseMaybe)
+import Data.Attoparsec.Number
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as Lazy
+import Data.Int
+import Data.IntSet
+import Data.Iso hiding (option)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.String
 import Data.Text (Text)
+import qualified Data.Text.Lazy as Lazy
+import Data.Time.Clock
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Fusion.Stream as VS
+import Data.Word
+
+import Control.Category
+import Control.Monad
 
 
 aeObject :: Iso (Object :- t) (Value :- t)
@@ -148,32 +155,39 @@ class Json a where
 instance Json a => Json [a] where
   grammar = list grammar
 
-instance Json Bool where
-  grammar = liftAeson
-
-instance Json Int where
-  grammar = liftAeson
-
-instance Json Integer where
-  grammar = liftAeson
-
-instance Json Float where
-  grammar = liftAeson
-
-instance Json Double where
-  grammar = liftAeson
-
-instance Json [Char] where
-  grammar = liftAeson
-
 instance Json a => Json (Maybe a) where
   grammar = option grammar
 
 instance (Json a, Json b) => Json (Either a b) where
   grammar = either grammar grammar
 
-instance Json Value where
-  grammar = id
+
+instance Json Bool            where grammar = liftAeson
+instance Json Char            where grammar = liftAeson
+instance Json Double          where grammar = liftAeson
+instance Json Float           where grammar = liftAeson
+instance Json Int             where grammar = liftAeson
+instance Json Int8            where grammar = liftAeson
+instance Json Int16           where grammar = liftAeson
+instance Json Int32           where grammar = liftAeson
+instance Json Int64           where grammar = liftAeson
+instance Json Integer         where grammar = liftAeson
+instance Json Word            where grammar = liftAeson
+instance Json Word8           where grammar = liftAeson
+instance Json Word16          where grammar = liftAeson
+instance Json Word32          where grammar = liftAeson
+instance Json Word64          where grammar = liftAeson
+instance Json ()              where grammar = liftAeson
+instance Json ByteString      where grammar = liftAeson
+instance Json Lazy.ByteString where grammar = liftAeson
+instance Json Number          where grammar = liftAeson
+instance Json Text            where grammar = liftAeson
+instance Json Lazy.Text       where grammar = liftAeson
+instance Json IntSet          where grammar = liftAeson
+instance Json UTCTime         where grammar = liftAeson
+instance Json DotNetTime      where grammar = liftAeson
+instance Json Value           where grammar = id
+instance Json [Char]          where grammar = liftAeson
 
 unsafeToJson :: Json a => String -> a -> Value
 unsafeToJson context value =
