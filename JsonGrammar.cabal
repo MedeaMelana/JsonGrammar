@@ -1,5 +1,5 @@
 Name:           JsonGrammar
-Version:        0.3
+Version:        0.3.1
 Synopsis:       Combinators for bidirectional JSON parsing
 Description:   	Combinators for bidirectional JSON parsing
 
@@ -25,11 +25,11 @@ Library
                     Data.Iso.TH,
                     Data.Iso.Common,
                     Language.JsonGrammar
-  Build-Depends:    base >= 3.0 && < 4.4,
+  Build-Depends:    base >= 3.0 && < 4.5,
                     containers >= 0.3 && < 0.5,
                     aeson >= 0.3 && < 0.4,
                     semigroups >= 0.5 && < 0.6,
-                    template-haskell >= 2.4 && < 2.6,
+                    template-haskell >= 2.4 && < 2.7,
                     -- constraints copied from aeson-0.3.2.5:
                     attoparsec >= 0.8.5.3,
                     bytestring,
