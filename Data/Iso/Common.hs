@@ -30,6 +30,8 @@ module Data.Iso.Common (
 
 import Prelude hiding (id, (.), maybe, either)
 import Control.Category
+import Control.Arrow (arr, Kleisli(..))
+import Control.Monad
 
 import Data.Iso.Core
 import Data.Iso.TH
@@ -40,20 +42,20 @@ import Data.Semigroup
 unit :: Iso t (() :- t)
 unit = Iso f g
   where
-    f       t  = Just (() :- t)
-    g (_ :- t) = Just t
+    f = arr (() :-)
+    g = arr (\(_ :- t) -> t)
 
 tup :: Iso (a :- b :- t) ((a, b) :- t)
 tup = Iso f g
   where
-    f (a :- b :- t) = Just ((a, b) :- t)
-    g ((a, b) :- t) = Just (a :- b :- t)
+    f = arr $ \(a :- b :- t) -> ((a, b) :- t)
+    g = arr $ \((a, b) :- t) -> (a :- b :- t)
 
 tup3 :: Iso (a :- b :- c :- t) ((a, b, c) :- t)
 tup3 = Iso f g
   where
-    f (a :- b :- c :- t) = Just ((a, b, c) :- t)
-    g ((a, b, c) :- t) = Just (a :- b :- c :- t)
+    f = arr $ \(a :- b :- c :- t) -> ((a, b, c)   :- t)
+    g = arr $ \((a, b, c)   :- t) -> (a :- b :- c :- t)
 
 nothing :: Iso t (Maybe a :- t)
 just    :: Iso (a :- t) (Maybe a :- t)
@@ -66,16 +68,20 @@ maybe el = just . el <> nothing
 nil :: Iso t ([a] :- t)
 nil = Iso f g
   where
-    f        t  = Just ([] :- t)
-    g ([] :- t) = Just t
-    g _         = Nothing
+    f = arr ([] :-)
+    g = Kleisli $ \(xs :- t) ->
+          case xs of
+            [] -> return t
+            _  -> mzero
 
 cons :: Iso (a :- [a] :- t) ([a] :- t)
 cons = Iso f g
   where
-    f (x :- xs  :- t) = Just ((x : xs) :- t)
-    g ((x : xs) :- t) = Just (x :- xs :- t)
-    g _               = Nothing
+    f = Kleisli $ \(x :- xs  :- t) -> return ((x : xs) :- t)
+    g = Kleisli $ \(xs' :- t) ->
+          case xs' of
+            x : xs -> return (x :- xs :- t)
+            _      -> mzero
 
 
 left  :: Iso (a :- t) (Either a b :- t)

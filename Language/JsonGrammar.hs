@@ -37,6 +37,7 @@ import Data.Word
 
 import Control.Category
 import Control.Monad
+import Control.Arrow
 
 
 aeObject :: Iso (Object :- t) (Value :- t)
@@ -48,8 +49,8 @@ aeNull   :: Iso            t  (Value :- t)
 liftAeson :: (FromJSON a, ToJSON a) => Iso (Value :- t) (a :- t)
 liftAeson = stack (Iso from to)
   where
-    from = parseMaybe parseJSON
-    to   = Just . toJSON
+    from = Kleisli $ parseMaybe parseJSON
+    to   = arr toJSON
 
 -- | Introduce 'Null' as possible value. First gives the argument grammar a
 -- chance, only yielding 'Null' or 'Nothing' if the argument grammar fails to
@@ -98,8 +99,8 @@ elementBy g = inverse cons  -- Value   :- [Value] :- t
 vectorReverseList :: Iso (V.Vector a :- t) ([a] :- t)
 vectorReverseList = stack (Iso f g)
   where
-    f = Just . VS.toList    . VG.streamR
-    g = Just . VG.unstreamR . VS.fromList
+    f = arr (VS.toList    . VG.streamR)
+    g = arr (VG.unstreamR . VS.fromList)
 
 
 -- | Describe a property with the given name and value grammar.
@@ -110,10 +111,10 @@ rawProp :: String -> Iso (Object :- t) (Object :- Value :- t)
 rawProp name = Iso from to
   where
     textName = fromString name
-    from (o :- r) = do
+    from = Kleisli $ \(o :- r) -> do
       value <- M.lookup textName o
       return (M.delete textName o :- value :- r)
-    to (o :- value :- r) = do
+    to = Kleisli $ \(o :- value :- r) -> do
       guard (M.notMember textName o)
       return (M.insert textName value o :- r)
 
@@ -122,11 +123,11 @@ rawFixedProp :: String -> Value -> Iso (Object :- t) (Object :- t)
 rawFixedProp name value = stack (Iso from to)
   where
     textName = fromString name
-    from o = do
+    from = Kleisli $ \o -> do
       value' <- M.lookup textName o
       guard (value' == value)
       return (M.delete textName o)
-    to o = do
+    to = Kleisli $ \o -> do
       guard (M.notMember textName o)
       return (M.insert textName value o)
 

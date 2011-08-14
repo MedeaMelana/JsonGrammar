@@ -7,6 +7,7 @@ import Data.Iso.Core
 import Language.Haskell.TH
 import Control.Applicative
 import Control.Monad
+import Control.Arrow
 
 
 -- | Derive partial isomorphisms for a given datatype. The resulting
@@ -55,15 +56,16 @@ deriveConstructor name tys = do
   fieldNames <- replicateM (length tys) (newName "a")
 
   -- Figure out the names of some constructors
-  ConE just  <- [| Just |]
-  ConE cons  <- [| (:-) |]
+  ret       <- [| return |]
+  ConE cons <- [| (:-) |]
+  kleisli   <- [| Kleisli |]
 
   let pat = foldr (\f fs -> ConP cons [VarP f, fs]) (VarP t) fieldNames
   let applyCon = foldl (\f x -> f `AppE` VarE x) (ConE name) fieldNames
   -- applyCon <- [| undefined |]
-  let body = ConE just `AppE` (ConE cons `AppE` applyCon `AppE` VarE t)
+  let body = ret `AppE` (ConE cons `AppE` applyCon `AppE` VarE t)
 
-  return $ LamE [pat] body
+  return $ kleisli `AppE` LamE [pat] body
 
 
 deriveDestructor :: Bool -> Name -> [Type] -> Q Exp
@@ -74,12 +76,13 @@ deriveDestructor matchWildcard name tys = do
   fieldNames <- replicateM (length tys) (newName "a")
 
   -- Figure out the names of some constructors
-  ConE just  <- [| Just |]
+  ret        <- [| return |]
   ConE cons  <- [| (:-) |]
   nothing    <- [| Nothing |]
+  kleisli    <- [| Kleisli |]
 
   let conPat   = ConP name (map VarP fieldNames)
-  let okBody   = ConE just `AppE`
+  let okBody   = ret `AppE`
                   foldr
                     (\h t -> ConE cons `AppE` VarE h `AppE` t)
                     (VarE r)
@@ -91,7 +94,7 @@ deriveDestructor matchWildcard name tys = do
               then [okCase, failCase]
               else [okCase]
 
-  return $ LamE [VarP x] (CaseE (VarE x) allCases)
+  return $ kleisli `AppE` LamE [VarP x] (CaseE (VarE x) allCases)
 
 
 -- Retrieve the name of a constructor.

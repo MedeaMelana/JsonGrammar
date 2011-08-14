@@ -18,6 +18,7 @@ import Data.Monoid
 import Data.Semigroup
 
 import Control.Applicative hiding (many)
+import Control.Arrow
 import Control.Monad
 import Control.Category
 
@@ -25,25 +26,23 @@ import Control.Category
 -- Partial isomorphisms
 
 -- | Bidirectional partial isomorphism.
-data Iso a b = Iso (a -> Maybe b) (b -> Maybe a)
+data Iso a b = Iso (Kleisli Maybe a b) (Kleisli Maybe b a)
 
 instance Category Iso where
-  id                          = Iso Just Just
-  ~(Iso f1 g1) . ~(Iso f2 g2) = Iso (f1 <=< f2) (g1 >=> g2)
+  id                          = Iso id id
+  ~(Iso f1 g1) . ~(Iso f2 g2) = Iso (f1 . f2) (g2 . g1)
 
 instance Monoid (Iso a b) where
-  mempty = Iso (const Nothing) (const Nothing)
+  mempty = Iso zeroArrow zeroArrow
   ~(Iso f1 g1) `mappend` ~(Iso f2 g2) =
-    Iso
-      ((<|>) <$> f1 <*> f2)
-      ((<|>) <$> g1 <*> g2)
+    Iso (f1 <+> f2) (g1 <+> g2)
 
 instance Semigroup (Iso a b) where
   (<>) = mappend
 
 -- | Apply an isomorphism in one direction.
 convert :: Iso a b -> a -> Maybe b
-convert (Iso f _) = f
+convert (Iso f _) = runKleisli f
 
 -- | Inverse of an isomorphism.
 inverse :: Iso a b -> Iso b a
@@ -53,8 +52,8 @@ inverse (Iso f g) = Iso g f
 many :: Iso a a -> Iso a a
 many (Iso f g) = Iso manyF manyG
   where
-    manyF = ((<|>) <$> (f >=> manyF) <*> Just)
-    manyG = ((<|>) <$> (g >=> manyG) <*> Just)
+    manyF = manyF . f <+> id
+    manyG = manyG . g <+> id
 
 
 -- Stack-based isomorphisms
@@ -71,34 +70,34 @@ head (h :- _) = h
 stack :: Iso a b -> Iso (a :- t) (b :- t)
 stack (Iso f g) = Iso (lift f) (lift g)
   where
-    lift k (x :- t) = (:- t) <$> k x
+    lift (Kleisli k) = Kleisli $ \(x :- t) -> (:- t) <$> k x
 
 -- | Convert from a stack isomorphism.
 unstack :: Iso (a :- ()) (b :- ()) -> Iso a b
 unstack (Iso f g) = Iso (lift f) (lift g)
   where
-    lift k = fmap head . k . (:- ())
+    lift (Kleisli k) = Kleisli $ fmap head . k . (:- ())
 
 -- | Swap the top two arguments.
 swap :: Iso (a :- b :- t) (b :- a :- t)
 swap = Iso f f
   where
-    f (x :- y :- t) = Just (y :- x :- t)
+    f = arr $ \(x :- y :- t) -> (y :- x :- t)
 
 -- | Introduce a head value that is passed unmodified.
 duck :: Iso t1 t2 -> Iso (h :- t1) (h :- t2)
 duck (Iso f g) = Iso (lift f) (lift g)
   where
-    lift k (h :- t) = (h :-) <$> k t
+    lift (Kleisli k) = Kleisli $ \(h :- t) -> (h :-) <$> k t
 
 -- | Push or pop a specific value.
 lit :: Eq a => a -> Iso t (a :- t)
 lit x = Iso f g
   where
-    f t = Just (x :- t)
-    g (x' :- t) = do
+    f = arr (x :-)
+    g = Kleisli $ \(x' :- t) -> do
       guard (x' == x)
-      Just t
+      return t
 
 -- | Inverse of 'lit'.
 inverseLit :: Eq a => a -> Iso (a :- t) t
@@ -110,8 +109,8 @@ inverseLit = inverse . lit
 matchWithDefault :: (a -> Bool) -> a -> Iso t (a :- t)
 matchWithDefault p x = Iso f g
   where
-    f t = Just (x :- t)
-    g (x' :- t) = do
+    f = arr (x :-)
+    g = Kleisli $ \(x' :- t) -> do
       guard (p x')
       return t
 
