@@ -90,8 +90,7 @@ array els = inverse aeArray    -- Vector Value :- t1
         >>> inverse nil        -- t2
 
 -- | Describe a single array element with the given grammar.
-elementBy :: Iso (Value :- t) (a :- t) ->
-  Iso ([Value] :- t) ([Value] :- a :- t)
+elementBy :: Iso (Value :- t1) t2 -> Iso ([Value] :- t1) ([Value] :- t2)
 elementBy g = inverse cons  -- Value   :- [Value] :- t
           >>> swap          -- [Value] :- Value :- t
           >>> duck g        -- [Value] :- a :- t
