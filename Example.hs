@@ -1,13 +1,16 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoMonoPatBinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Example where
 
 import Data.Iso
+import Data.ByteString
+import qualified Data.ByteString.Lazy as Lazy
 import Language.JsonGrammar
 
-import Prelude hiding (id, (.), head, either)
+import Prelude hiding (id, (.), head, either, readFile)
 import Control.Category
 
 import Data.Aeson (Object)
@@ -39,6 +42,7 @@ instance Json Person where
     . prop "geslacht"
     . prop "leeftijd"
     . coordsProps
+    . fixedProp "erik" "is een lul"
     )
 
 instance Json Gender where
@@ -50,3 +54,8 @@ coordsProps = duck coords . prop "lat" . prop "lng"
 
 anna :: Person
 anna = Person "Anna" Female 36 (Coords 53.0163038 5.1993053)
+
+readAnna :: IO ()
+readAnna = do
+  annaSource <- readFile "anna.json"
+  print (fromJsonSource annaSource :: FromJsonResult Person)
