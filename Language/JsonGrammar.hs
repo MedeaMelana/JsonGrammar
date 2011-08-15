@@ -5,7 +5,7 @@
 
 module Language.JsonGrammar (
   -- * Constructing JSON grammars
-  Grammar,
+  Grammar, FromJsonResult(..), FromJsonError(..),
   liftAeson, option, greedyOption, list, elementBy, array,
   propBy, rawFixedProp, rest, ignoreRest, object,
   
