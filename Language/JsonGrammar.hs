@@ -50,6 +50,7 @@ data FromJsonResult a
   | ResultErrors [FromJsonError]
   -- empty list means: grammar was empty
   -- multiple errors means: only one of them needs to be fixed for progress
+  deriving (Eq, Show)
 
 data FromJsonError
   = ExpectedProperty Text
@@ -59,6 +60,7 @@ data FromJsonError
   | ExpectedObject
   | ExpectedLiteral Value
   | AesonError String
+  deriving (Eq, Show)
 
 instance Functor FromJsonResult where
   fmap = liftM
