@@ -2,8 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE NoMonoPatBinds #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Language.JsonGrammar (
   -- * Constructing JSON grammars
@@ -86,14 +84,23 @@ instance MonadPlus FromJsonResult where
   _                  `mplus` ResultSuccess y = ResultSuccess y
   ResultErrors xs    `mplus` ResultErrors ys = ResultErrors (xs ++ ys)
 
-aeObject :: (Monad m, MonadPlus n) => Iso m n (Object :- t) (Value :- t)
-aeArray  :: (Monad m, MonadPlus n) => Iso m n (Array  :- t) (Value :- t)
-aeString :: (Monad m, MonadPlus n) => Iso m n (Text   :- t) (Value :- t)
-aeNumber :: (Monad m, MonadPlus n) => Iso m n (Number :- t) (Value :- t)
-aeBool   :: (Monad m, MonadPlus n) => Iso m n (Bool   :- t) (Value :- t)
-aeNull   :: (Monad m, MonadPlus n) => Iso m n            t  (Value :- t)
-(aeObject, aeArray, aeString, aeNumber, aeBool, aeNull) =
-  $(deriveIsos ''Value)
+aeObject :: (Monad m, MonadPlus n, Functor m, Functor n) =>
+  Iso m n (Object :- t) (Value :- t)
+aeObject = stack $ Iso
+  (arr Object)
+  (Kleisli $ \v -> case v of Object o -> return o; _ -> mzero)
+
+aeArray  :: (Monad m, MonadPlus n, Functor m, Functor n) =>
+  Iso m n (Array  :- t) (Value :- t)
+aeArray = stack $ Iso
+  (arr Array)
+  (Kleisli $ \v -> case v of Array o -> return o; _ -> mzero)
+
+aeNull   :: (Monad m, MonadPlus n, Functor m, Functor n) =>
+  Iso m n t (Value :- t)
+aeNull = Iso
+  (arr (Null :-))
+  (Kleisli $ \v -> case v of Null :- t -> return t; _ -> mzero)
 
 -- | Convert any Aeson-enabled type to a grammar.
 liftAeson :: (FromJSON a, ToJSON a) => Grammar (Value :- t) (a :- t)
