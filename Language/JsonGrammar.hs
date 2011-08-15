@@ -3,9 +3,11 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoMonoPatBinds #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Language.JsonGrammar (
   -- * Constructing JSON grammars
+  Grammar,
   liftAeson, option, greedyOption, list, elementBy, array,
   propBy, rawFixedProp, rest, ignoreRest, object,
   
@@ -39,14 +41,20 @@ import Control.Category
 import Control.Monad
 import Control.Arrow
 
+-- | JSON grammars use Maybe wrappers around the result values.
+type Grammar = Iso Maybe Maybe
 
-aeObject :: Iso (Object :- t) (Value :- t)
-aeArray  :: Iso (Array  :- t) (Value :- t)
-aeNull   :: Iso            t  (Value :- t)
-(aeObject, aeArray, _, _, _, aeNull) = $(deriveIsos ''Value)
+aeObject :: Grammar (Object :- t) (Value :- t)
+aeArray  :: Grammar (Array  :- t) (Value :- t)
+aeString :: Grammar (Text   :- t) (Value :- t)
+aeNumber :: Grammar (Number :- t) (Value :- t)
+aeBool   :: Grammar (Bool   :- t) (Value :- t)
+aeNull   :: Grammar            t  (Value :- t)
+(aeObject, aeArray, aeString, aeNumber, aeBool, aeNull) =
+  $(deriveIsos ''Value)
 
 -- | Convert any Aeson-enabled type to a grammar.
-liftAeson :: (FromJSON a, ToJSON a) => Iso (Value :- t) (a :- t)
+liftAeson :: (FromJSON a, ToJSON a) => Grammar (Value :- t) (a :- t)
 liftAeson = stack (Iso from to)
   where
     from = Kleisli $ parseMaybe parseJSON
@@ -55,48 +63,51 @@ liftAeson = stack (Iso from to)
 -- | Introduce 'Null' as possible value. First gives the argument grammar a
 -- chance, only yielding 'Null' or 'Nothing' if the argument grammar fails to
 -- handle the input.
-option :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
+option :: Grammar (Value :- t) (a :- t) -> Grammar (Value :- t) (Maybe a :- t)
 option g = just . g <> nothing . inverse aeNull
 
 -- | Introduce 'Null' as possible (greedy) value. Always converts 'Nothing' to
 -- 'Null' and vice versa, even if the argument grammar knows how to handle
 -- these values.
-greedyOption :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) (Maybe a :- t)
+greedyOption :: Grammar (Value :- t) (a :- t) ->
+  Grammar (Value :- t) (Maybe a :- t)
 greedyOption g = nothing . inverse aeNull <> just . g
 
 -- | Convert between a JSON array and Haskell list of arbitrary lengts. The
 -- elements are converted using the argument grammar.
-list :: Iso (Value :- t) (a :- t) -> Iso (Value :- t) ([a] :- t)
+list :: Grammar (Value :- t) (a :- t) -> Grammar (Value :- t) ([a] :- t)
 list g = duck nil >>> array (many single)
   where
     -- With ScopedTypeVariables:
-    -- single :: Iso ([Value] :- [a] :- t) ([Value] :- [a] :- t)
+    -- single :: Grammar ([Value] :- [a] :- t) ([Value] :- [a] :- t)
     single = swap                -- [a] :- [Value] :- t
          >>> duck (elementBy g)  -- [a] :- [Value] :- a :- t
          >>> swap                -- [Value] :- [a] :- a :- t
          >>> duck swap           -- [Value] :- a :- [a] :- t
          >>> duck cons           -- [Value] :- [a] :- t
 
--- | Wrap a bunch of elements in a JSON array. For example, to match an array of exactly length two:
+-- | Wrap a bunch of elements in a JSON array. For example, to match an array
+-- of exactly length two:
 --
 -- > array (element . element)
 --
 -- Or to match an empty array:
 --
 -- > array id
-array :: Iso ([Value] :- t1) ([Value] :- t2) -> Iso (Value :- t1) t2
+array :: Grammar ([Value] :- t1) ([Value] :- t2) -> Grammar (Value :- t1) t2
 array els = inverse aeArray    -- Vector Value :- t1
         >>> vectorReverseList  -- [Value] :- t1
         >>> els                -- [Value] :- t2
         >>> inverse nil        -- t2
 
 -- | Describe a single array element with the given grammar.
-elementBy :: Iso (Value :- t1) t2 -> Iso ([Value] :- t1) ([Value] :- t2)
+elementBy :: Grammar (Value :- t1) t2 ->
+  Grammar ([Value] :- t1) ([Value] :- t2)
 elementBy g = inverse cons  -- Value   :- [Value] :- t
           >>> swap          -- [Value] :- Value :- t
           >>> duck g        -- [Value] :- a :- t
 
-vectorReverseList :: Iso (V.Vector a :- t) ([a] :- t)
+vectorReverseList :: Grammar (V.Vector a :- t) ([a] :- t)
 vectorReverseList = stack (Iso f g)
   where
     f = arr (VS.toList    . VG.streamR)
@@ -104,10 +115,11 @@ vectorReverseList = stack (Iso f g)
 
 
 -- | Describe a property with the given name and value grammar.
-propBy :: Iso (Value :- t) (a :- t) -> String -> Iso (Object :- t) (Object :- a :- t)
+propBy :: Grammar (Value :- t) (a :- t) -> String ->
+  Grammar (Object :- t) (Object :- a :- t)
 propBy g name = duck g . rawProp name
 
-rawProp :: String -> Iso (Object :- t) (Object :- Value :- t)
+rawProp :: String -> Grammar (Object :- t) (Object :- Value :- t)
 rawProp name = Iso from to
   where
     textName = fromString name
@@ -119,7 +131,7 @@ rawProp name = Iso from to
       return (M.insert textName value o :- r)
 
 -- | Expect a specific key/value pair.
-rawFixedProp :: String -> Value -> Iso (Object :- t) (Object :- t)
+rawFixedProp :: String -> Value -> Grammar (Object :- t) (Object :- t)
 rawFixedProp name value = stack (Iso from to)
   where
     textName = fromString name
@@ -132,17 +144,18 @@ rawFixedProp name value = stack (Iso from to)
       return (M.insert textName value o)
 
 -- | Collect all properties left in an object.
-rest :: Iso (Object :- t) (Object :- M.Map Text Value :- t)
+rest :: Grammar (Object :- t) (Object :- M.Map Text Value :- t)
 rest = lit M.empty
 
--- | Match and discard all properties left in the object. When converting back to JSON, produces no properties.
-ignoreRest :: Iso (Object :- t) (Object :- t)
+-- | Match and discard all properties left in the object. When converting back
+-- to JSON, produces no properties.
+ignoreRest :: Grammar (Object :- t) (Object :- t)
 ignoreRest = lit M.empty . inverse (ignoreWithDefault M.empty)
 
 -- | Wrap an exhaustive bunch of properties in an object. Typical usage:
 -- 
 -- > object (prop "key1" . prop "key2")
-object :: Iso (Object :- t1) (Object :- t2) -> Iso (Value :- t1) t2
+object :: Grammar (Object :- t1) (Object :- t2) -> Grammar (Value :- t1) t2
 object props = inverse aeObject >>> props >>> inverseLit M.empty
 
 
@@ -150,7 +163,7 @@ object props = inverse aeObject >>> props >>> inverseLit M.empty
 
 -- | Convert values of a type to and from JSON.
 class Json a where
-  grammar :: Iso (Value :- t) (a :- t)
+  grammar :: Grammar (Value :- t) (a :- t)
 
 instance Json a => Json [a] where
   grammar = list grammar
@@ -205,18 +218,19 @@ toJson :: Json a => a -> Maybe Value
 toJson = convert (inverse (unstack grammar))
 
 -- | Expect/produce a specific JSON 'Value'.
-litJson :: Json a => a -> Iso (Value :- t) t
+litJson :: Json a => a -> Grammar (Value :- t) t
 litJson = inverseLit . unsafeToJson "litJson"
 
--- | Describe a property whose value grammar is described by a 'Json' instance.
-prop :: Json a => String -> Iso (Object :- t) (Object :- a :- t)
+-- | Describe a property whose value grammar is described by a 'Json'
+-- instance.
+prop :: Json a => String -> Grammar (Object :- t) (Object :- a :- t)
 prop = propBy grammar
 
 -- | Expect a specific key/value pair.
-fixedProp :: Json a => String -> a -> Iso (Object :- t) (Object :- t)
+fixedProp :: Json a => String -> a -> Grammar (Object :- t) (Object :- t)
 fixedProp name value = rawFixedProp name (unsafeToJson "fixedProp" value)
 
 -- | Describe a single array element whose grammar is given by a 'Json'
 -- instance.
-element :: Json a => Iso ([Value] :- t) ([Value] :- a :- t)
+element :: Json a => Grammar ([Value] :- t) ([Value] :- a :- t)
 element = elementBy grammar

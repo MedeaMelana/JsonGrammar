@@ -78,7 +78,7 @@ deriveDestructor matchWildcard name tys = do
   -- Figure out the names of some constructors
   ret        <- [| return |]
   ConE cons  <- [| (:-) |]
-  nothing    <- [| Nothing |]
+  mzer       <- [| mzero |]
   kleisli    <- [| Kleisli |]
 
   let conPat   = ConP name (map VarP fieldNames)
@@ -88,7 +88,7 @@ deriveDestructor matchWildcard name tys = do
                     (VarE r)
                     fieldNames
   let okCase   = Match (ConP cons [conPat, VarP r]) (NormalB okBody) []
-  let failCase = Match WildP (NormalB nothing) []
+  let failCase = Match WildP (NormalB mzer) []
   let allCases =
         if matchWildcard
               then [okCase, failCase]

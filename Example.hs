@@ -45,7 +45,7 @@ instance Json Gender where
   grammar = male   . litJson "man"
          <> female . litJson "vrouw"
 
-coordsProps :: Iso (Object :- t) (Object :- Coords :- t)
+coordsProps :: Grammar (Object :- t) (Object :- Coords :- t)
 coordsProps = duck coords . prop "lat" . prop "lng"
 
 anna :: Person

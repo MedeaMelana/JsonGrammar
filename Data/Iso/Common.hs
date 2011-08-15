@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoMonoPatBinds #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 -- | Constructor-destructor isomorphisms for some common datatypes.
 module Data.Iso.Common (
@@ -39,33 +40,34 @@ import Data.Iso.TH
 import Data.Semigroup
 
 
-unit :: Iso t (() :- t)
+unit :: (Monad m, Monad n) => Iso m n t (() :- t)
 unit = Iso f g
   where
     f = arr (() :-)
     g = arr (\(_ :- t) -> t)
 
-tup :: Iso (a :- b :- t) ((a, b) :- t)
+tup :: (Monad m, Monad n) => Iso m n (a :- b :- t) ((a, b) :- t)
 tup = Iso f g
   where
     f = arr $ \(a :- b :- t) -> ((a, b) :- t)
     g = arr $ \((a, b) :- t) -> (a :- b :- t)
 
-tup3 :: Iso (a :- b :- c :- t) ((a, b, c) :- t)
+tup3 :: (Monad m, Monad n) => Iso m n (a :- b :- c :- t) ((a, b, c) :- t)
 tup3 = Iso f g
   where
     f = arr $ \(a :- b :- c :- t) -> ((a, b, c)   :- t)
     g = arr $ \((a, b, c)   :- t) -> (a :- b :- c :- t)
 
-nothing :: Iso t (Maybe a :- t)
-just    :: Iso (a :- t) (Maybe a :- t)
+nothing :: (Monad m, Monad n) => Iso m n t (Maybe a :- t)
+just    :: (Monad m, Monad n) => Iso m n (a :- t) (Maybe a :- t)
 (nothing, just) = $(deriveIsos ''Maybe)
 
-maybe :: Iso t (a :- t) -> Iso t (Maybe a :- t)
+maybe :: (MonadPlus m, MonadPlus n) =>
+  Iso m n t (a :- t) -> Iso m n t (Maybe a :- t)
 maybe el = just . el <> nothing
 
 
-nil :: Iso t ([a] :- t)
+nil :: (Monad m, MonadPlus n) => Iso m n t ([a] :- t)
 nil = Iso f g
   where
     f = arr ([] :-)
@@ -74,7 +76,7 @@ nil = Iso f g
             [] -> return t
             _  -> mzero
 
-cons :: Iso (a :- [a] :- t) ([a] :- t)
+cons :: (Monad m, MonadPlus n) => Iso m n (a :- [a] :- t) ([a] :- t)
 cons = Iso f g
   where
     f = Kleisli $ \(x :- xs  :- t) -> return ((x : xs) :- t)
@@ -84,17 +86,18 @@ cons = Iso f g
             _      -> mzero
 
 
-left  :: Iso (a :- t) (Either a b :- t)
-right :: Iso (b :- t) (Either a b :- t)
+left  :: Iso m n (a :- t) (Either a b :- t)
+right :: Iso m n (b :- t) (Either a b :- t)
 (left, right) = $(deriveIsos ''Either)
 
-either :: Iso t1 (a :- t2) -> Iso t1 (b :- t2) -> Iso t1 (Either a b :- t2)
+either :: (MonadPlus m, MonadPlus n) => Iso m n t1 (a :- t2) ->
+  Iso m n t1 (b :- t2) -> Iso m n t1 (Either a b :- t2)
 either f g = left . f <> right . g
 
 
-false :: Iso t (Bool :- t)
-true  :: Iso t (Bool :- t)
+false :: (Monad m, MonadPlus n) => Iso m n t (Bool :- t)
+true  :: (Monad m, MonadPlus n) => Iso m n t (Bool :- t)
 (false, true) = $(deriveIsos ''Bool)
 
-bool  :: Iso t (Bool :- t)
+bool  :: (MonadPlus m, MonadPlus n) => Iso m n t (Bool :- t)
 bool = false <> true
