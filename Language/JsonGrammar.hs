@@ -12,14 +12,16 @@ module Language.JsonGrammar (
   propBy, rawFixedProp, rest, ignoreRest, object,
   
   -- * Type-directed conversion
-  Json(..), fromJson, toJson, litJson, prop, fixedProp, element
+  Json(..), fromJson, fromJsonSource, toJson, toJsonSource,
+  litJson, prop, fixedProp, element
   
   ) where
 
 import Prelude hiding (id, (.), head, maybe, either)
 
 import Data.Aeson hiding (object)
-import Data.Aeson.Types (parseMaybe)
+import Data.Aeson.Types (parse)
+import Data.Attoparsec (parseOnly)
 import Data.Attoparsec.Number
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as Lazy
@@ -42,8 +44,8 @@ import Control.Arrow
 import Control.Category
 import Control.Monad
 
--- | JSON grammars use Maybe wrappers around the result values.
-type Grammar = Iso Maybe Maybe
+-- | Specialized result monads for JSON grammars.
+type Grammar = Iso FromJsonResult Maybe
 
 data FromJsonResult a
   = ResultSuccess a
@@ -53,11 +55,12 @@ data FromJsonResult a
 
 data FromJsonError
   = ExpectedProperty Text
-  | UnexpectedProperty
+  | UnexpectedProperties [Text]
   | ExpectedArray
+  | ExpectedEndOfArray
   | ExpectedObject
   | ExpectedLiteral Value
-  | AesonError Text
+  | AesonError String
 
 instance Functor FromJsonResult where
   fmap = liftM
@@ -83,12 +86,12 @@ instance MonadPlus FromJsonResult where
   _                  `mplus` ResultSuccess y = ResultSuccess y
   ResultErrors xs    `mplus` ResultErrors ys = ResultErrors (xs ++ ys)
 
-aeObject :: Grammar (Object :- t) (Value :- t)
-aeArray  :: Grammar (Array  :- t) (Value :- t)
-aeString :: Grammar (Text   :- t) (Value :- t)
-aeNumber :: Grammar (Number :- t) (Value :- t)
-aeBool   :: Grammar (Bool   :- t) (Value :- t)
-aeNull   :: Grammar            t  (Value :- t)
+aeObject :: (Monad m, MonadPlus n) => Iso m n (Object :- t) (Value :- t)
+aeArray  :: (Monad m, MonadPlus n) => Iso m n (Array  :- t) (Value :- t)
+aeString :: (Monad m, MonadPlus n) => Iso m n (Text   :- t) (Value :- t)
+aeNumber :: (Monad m, MonadPlus n) => Iso m n (Number :- t) (Value :- t)
+aeBool   :: (Monad m, MonadPlus n) => Iso m n (Bool   :- t) (Value :- t)
+aeNull   :: (Monad m, MonadPlus n) => Iso m n            t  (Value :- t)
 (aeObject, aeArray, aeString, aeNumber, aeBool, aeNull) =
   $(deriveIsos ''Value)
 
@@ -96,7 +99,9 @@ aeNull   :: Grammar            t  (Value :- t)
 liftAeson :: (FromJSON a, ToJSON a) => Grammar (Value :- t) (a :- t)
 liftAeson = stack (Iso from to)
   where
-    from = Kleisli $ parseMaybe parseJSON
+    from = Kleisli $ \value -> case parse parseJSON value of
+            Error message -> ResultErrors [AesonError message]
+            Success x     -> ResultSuccess x
     to   = arr toJSON
 
 -- | Introduce 'Null' as possible value. First gives the argument grammar a
@@ -163,10 +168,11 @@ rawProp name = Iso from to
   where
     textName = fromString name
     from = Kleisli $ \(o :- r) -> do
-      value <- M.lookup textName o
-      return (M.delete textName o :- value :- r)
+      case M.lookup textName o of
+        Nothing    -> ResultErrors [ExpectedProperty textName]
+        Just value -> return (M.delete textName o :- value :- r)
     to = Kleisli $ \(o :- value :- r) -> do
-      guard (M.notMember textName o)
+      guard (M.notMember textName o)  -- todo: throw PropertyAlreadyExists
       return (M.insert textName value o :- r)
 
 -- | Expect a specific key/value pair.
@@ -175,9 +181,12 @@ rawFixedProp name value = stack (Iso from to)
   where
     textName = fromString name
     from = Kleisli $ \o -> do
-      value' <- M.lookup textName o
-      guard (value' == value)
-      return (M.delete textName o)
+      case M.lookup textName o of
+        Nothing -> ResultErrors [ExpectedProperty textName]
+        Just value' -> do
+          if value' == value
+            then return (M.delete textName o)
+            else ResultErrors [ExpectedLiteral value]
     to = Kleisli $ \o -> do
       guard (M.notMember textName o)
       return (M.insert textName value o)
@@ -249,12 +258,21 @@ unsafeToJson context value =
             ": could not convert Haskell value to JSON value")
 
 -- | Convert from JSON.
-fromJson :: Json a => Value -> Maybe a
+fromJson :: Json a => Value -> FromJsonResult a
 fromJson = convert (unstack grammar)
+
+fromJsonSource :: Json a => ByteString -> FromJsonResult a
+fromJsonSource source =
+  case parseOnly json source of
+    Left message -> ResultErrors [AesonError message]
+    Right value  -> fromJson value
 
 -- | Convert to JSON.
 toJson :: Json a => a -> Maybe Value
 toJson = convert (inverse (unstack grammar))
+
+toJsonSource :: Json a => a -> Maybe Lazy.ByteString
+toJsonSource = fmap encode . toJson
 
 -- | Expect/produce a specific JSON 'Value'.
 litJson :: Json a => a -> Grammar (Value :- t) t
