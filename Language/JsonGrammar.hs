@@ -37,12 +37,51 @@ import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Fusion.Stream as VS
 import Data.Word
 
+import Control.Applicative hiding (many)
+import Control.Arrow
 import Control.Category
 import Control.Monad
-import Control.Arrow
 
 -- | JSON grammars use Maybe wrappers around the result values.
 type Grammar = Iso Maybe Maybe
+
+data FromJsonResult a
+  = ResultSuccess a
+  | ResultErrors [FromJsonError]
+  -- empty list means: grammar was empty
+  -- multiple errors means: only one of them needs to be fixed for progress
+
+data FromJsonError
+  = ExpectedProperty Text
+  | UnexpectedProperty
+  | ExpectedArray
+  | ExpectedObject
+  | ExpectedLiteral Value
+  | AesonError Text
+
+instance Functor FromJsonResult where
+  fmap = liftM
+
+instance Applicative FromJsonResult where
+  pure = return
+  (<*>) = ap
+
+instance Monad FromJsonResult where
+  return = ResultSuccess
+  res >>= f =
+    case res of
+      ResultSuccess x   -> f x
+      ResultErrors errs -> ResultErrors errs
+
+instance Alternative FromJsonResult where
+  empty = mzero
+  (<|>) = mplus
+
+instance MonadPlus FromJsonResult where
+  mzero                                      = ResultErrors []
+  ResultSuccess x    `mplus` _               = ResultSuccess x
+  _                  `mplus` ResultSuccess y = ResultSuccess y
+  ResultErrors xs    `mplus` ResultErrors ys = ResultErrors (xs ++ ys)
 
 aeObject :: Grammar (Object :- t) (Value :- t)
 aeArray  :: Grammar (Array  :- t) (Value :- t)
