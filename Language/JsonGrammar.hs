@@ -5,7 +5,7 @@
 
 module Language.JsonGrammar (
   -- * Constructing JSON grammars
-  Grammar, FromJsonResult(..), FromJsonError(..),
+  Grammar, FromJsonResult(..), FromJsonError(..), Path, PathSegment(..),
   liftAeson, option, greedyOption, list, elementBy, array,
   propBy, rawFixedProp, rest, ignoreRest, object,
   
@@ -47,7 +47,7 @@ type Grammar = Iso FromJsonResult Maybe
 
 data FromJsonResult a
   = ResultSuccess a
-  | ResultErrors [FromJsonError]
+  | ResultErrors [(Path, FromJsonError)]
   -- empty list means: grammar was empty
   -- multiple errors means: only one of them needs to be fixed for progress
   deriving (Eq, Show)
@@ -60,6 +60,11 @@ data FromJsonError
   | ExpectedObject
   | ExpectedLiteral Value
   | AesonError String
+  deriving (Eq, Show)
+
+type Path = [PathSegment]
+
+data PathSegment = ArrayIndex Int | ObjectProperty Text
   deriving (Eq, Show)
 
 instance Functor FromJsonResult where
@@ -109,7 +114,7 @@ liftAeson :: (FromJSON a, ToJSON a) => Grammar (Value :- t) (a :- t)
 liftAeson = stack (Iso from to)
   where
     from = Kleisli $ \value -> case parse parseJSON value of
-            Error message -> ResultErrors [AesonError message]
+            Error message -> ResultErrors [([], AesonError message)]
             Success x     -> ResultSuccess x
     to   = arr toJSON
 
@@ -178,7 +183,7 @@ rawProp name = Iso from to
     textName = fromString name
     from = Kleisli $ \(o :- r) -> do
       case M.lookup textName o of
-        Nothing    -> ResultErrors [ExpectedProperty textName]
+        Nothing    -> ResultErrors [([], ExpectedProperty textName)]
         Just value -> return (M.delete textName o :- value :- r)
     to = Kleisli $ \(o :- value :- r) -> do
       guard (M.notMember textName o)  -- todo: throw PropertyAlreadyExists
@@ -191,11 +196,12 @@ rawFixedProp name value = stack (Iso from to)
     textName = fromString name
     from = Kleisli $ \o -> do
       case M.lookup textName o of
-        Nothing -> ResultErrors [ExpectedProperty textName]
+        Nothing -> ResultErrors [([], ExpectedProperty textName)]
         Just value' -> do
           if value' == value
             then return (M.delete textName o)
-            else ResultErrors [ExpectedLiteral value]
+            else ResultErrors [([ObjectProperty textName],
+                                  ExpectedLiteral value)]
     to = Kleisli $ \o -> do
       guard (M.notMember textName o)
       return (M.insert textName value o)
@@ -273,7 +279,7 @@ fromJson = convert (unstack grammar)
 fromJsonSource :: Json a => ByteString -> FromJsonResult a
 fromJsonSource source =
   case parseOnly json source of
-    Left message -> ResultErrors [AesonError message]
+    Left message -> ResultErrors [([], AesonError message)]
     Right value  -> fromJson value
 
 -- | Convert to JSON.
