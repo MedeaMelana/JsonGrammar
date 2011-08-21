@@ -37,6 +37,8 @@ import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Fusion.Stream as VS
 import Data.Word
 
+import Debug.Trace
+
 import Control.Applicative hiding (many)
 import Control.Arrow
 import Control.Category
@@ -143,6 +145,15 @@ list g = duck nil >>> array (many single)
          >>> swap                -- [Value] :- [a] :- a :- t
          >>> duck swap           -- [Value] :- a :- [a] :- t
          >>> duck cons           -- [Value] :- [a] :- t
+
+debug :: String -> Grammar a b -> Grammar a b
+debug msg (Iso (Kleisli f) g) = Iso (Kleisli f') g
+  where
+    f' x = case f x of
+      y@(ResultSuccess _) ->
+        trace (msg ++ ": success") y
+      y@(ResultErrors _) ->
+        trace (msg ++ ": introduced error") y
 
 -- | Wrap a bunch of elements in a JSON array. For example, to match an array
 -- of exactly length two:
