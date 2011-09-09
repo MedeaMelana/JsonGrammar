@@ -37,8 +37,6 @@ import qualified Data.Vector.Generic as VG
 import qualified Data.Vector.Fusion.Stream as VS
 import Data.Word
 
-import Debug.Trace
-
 import Control.Applicative hiding (many)
 import Control.Arrow
 import Control.Category
@@ -48,10 +46,7 @@ import Control.Monad
 type Grammar = Iso FromJsonResult Maybe
 
 data FromJsonResult a
-  = ResultSuccess a
-  | ResultErrors [(Path, FromJsonError)]
-  -- empty list means: grammar was empty
-  -- multiple errors means: only one of them needs to be fixed for progress
+  = FromJsonResult (Maybe a) [(Path, FromJsonError)]
   deriving (Eq, Show)
 
 data FromJsonError
@@ -77,21 +72,21 @@ instance Applicative FromJsonResult where
   (<*>) = ap
 
 instance Monad FromJsonResult where
-  return = ResultSuccess
-  res >>= f =
-    case res of
-      ResultSuccess x   -> f x
-      ResultErrors errs -> ResultErrors errs
+  return x = FromJsonResult (Just x) []
+  (FromJsonResult mx errs) >>= f =
+    case mx of
+      Just x   -> case f x of
+        FromJsonResult my errs' -> FromJsonResult my (errs ++ errs')
+      Nothing -> FromJsonResult Nothing errs
 
 instance Alternative FromJsonResult where
   empty = mzero
   (<|>) = mplus
 
 instance MonadPlus FromJsonResult where
-  mzero                                      = ResultErrors []
-  ResultSuccess x    `mplus` _               = ResultSuccess x
-  _                  `mplus` ResultSuccess y = ResultSuccess y
-  ResultErrors xs    `mplus` ResultErrors ys = ResultErrors (xs ++ ys)
+  mzero                                      = FromJsonResult Nothing []
+  FromJsonResult mx errs `mplus` FromJsonResult my errs' =
+    FromJsonResult (mx `mplus` my) (errs ++ errs')
 
 aeObject :: (Monad m, MonadPlus n, Functor m, Functor n) =>
   Iso m n (Object :- t) (Value :- t)
@@ -116,8 +111,8 @@ liftAeson :: (FromJSON a, ToJSON a) => Grammar (Value :- t) (a :- t)
 liftAeson = stack (Iso from to)
   where
     from = Kleisli $ \value -> case parse parseJSON value of
-            Error message -> ResultErrors [([], AesonError message)]
-            Success x     -> ResultSuccess x
+            Error message -> FromJsonResult Nothing [([], AesonError message)]
+            Success x     -> pure x
     to   = arr toJSON
 
 -- | Introduce 'Null' as possible value. First gives the argument grammar a
@@ -145,15 +140,6 @@ list g = duck nil >>> array (many single)
          >>> swap                -- [Value] :- [a] :- a :- t
          >>> duck swap           -- [Value] :- a :- [a] :- t
          >>> duck cons           -- [Value] :- [a] :- t
-
-debug :: String -> Grammar a b -> Grammar a b
-debug msg (Iso (Kleisli f) g) = Iso (Kleisli f') g
-  where
-    f' x = case f x of
-      y@(ResultSuccess _) ->
-        trace (msg ++ ": success") y
-      y@(ResultErrors _) ->
-        trace (msg ++ ": introduced error") y
 
 -- | Wrap a bunch of elements in a JSON array. For example, to match an array
 -- of exactly length two:
@@ -194,7 +180,7 @@ rawProp name = Iso from to
     textName = fromString name
     from = Kleisli $ \(o :- r) -> do
       case M.lookup textName o of
-        Nothing    -> ResultErrors [([], ExpectedProperty textName)]
+        Nothing    -> FromJsonResult Nothing [([], ExpectedProperty textName)]
         Just value -> return (M.delete textName o :- value :- r)
     to = Kleisli $ \(o :- value :- r) -> do
       guard (M.notMember textName o)  -- todo: throw PropertyAlreadyExists
@@ -207,11 +193,11 @@ rawFixedProp name value = stack (Iso from to)
     textName = fromString name
     from = Kleisli $ \o -> do
       case M.lookup textName o of
-        Nothing -> ResultErrors [([], ExpectedProperty textName)]
+        Nothing -> FromJsonResult Nothing [([], ExpectedProperty textName)]
         Just value' -> do
           if value' == value
             then return (M.delete textName o)
-            else ResultErrors [([ObjectProperty textName],
+            else FromJsonResult Nothing [([ObjectProperty textName],
                                   ExpectedLiteral value)]
     to = Kleisli $ \o -> do
       guard (M.notMember textName o)
@@ -290,7 +276,7 @@ fromJson = convert (unstack grammar)
 fromJsonSource :: Json a => ByteString -> FromJsonResult a
 fromJsonSource source =
   case parseOnly json source of
-    Left message -> ResultErrors [([], AesonError message)]
+    Left message -> FromJsonResult Nothing [([], AesonError message)]
     Right value  -> fromJson value
 
 -- | Convert to JSON.
