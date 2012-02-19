@@ -45,6 +45,9 @@ import Control.Monad
 -- | Specialized result monads for JSON grammars.
 type Grammar = Iso FromJsonResult Maybe
 
+type ObjectGrammar t1 t2 = Grammar (Object :- t1) (Object :- t2)
+type ArrayGrammar t1 t2 = Grammar ([Value] :- t1) ([Value] :- t2)
+
 data FromJsonResult a
   = FromJsonResult (Maybe a) [(Path, FromJsonError)]
   deriving (Eq, Show)

@@ -61,3 +61,11 @@ readJsonFile :: Json a => String -> IO (FromJsonResult a)
 readJsonFile file = do
   source <- readFile file
   return (fromJsonSource source)
+
+test :: IO ()
+test = do
+  x <- readJsonFile "anna.json" :: IO (FromJsonResult [Person])
+  print x
+
+arrobj :: Grammar (Value :- t1) (String :- t1)
+arrobj = array (elementBy (object (prop "x")))

@@ -1,6 +1,6 @@
 data JsonError
   = ExpectedProperty Text
-  | UnexpectedProperties [Text]
+  | UnexpectedProperty
   | ExpectedArray
   | ExpectedObject
   | ExpectedLiteral Value
