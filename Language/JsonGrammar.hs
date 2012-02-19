@@ -21,11 +21,12 @@ import Data.Aeson.Types (parseMaybe)
 import Data.Attoparsec.Number
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as Lazy
+import Data.Hashable (Hashable)
 import Data.Int
-import Data.IntSet
+import Data.IntSet (IntSet)
 import Data.Iso hiding (option)
-import qualified Data.Map as M
-import Data.Maybe (fromMaybe)
+import qualified Data.HashMap.Lazy as M
+import Data.Maybe (fromMaybe, isJust)
 import Data.String
 import Data.Text (Text)
 import qualified Data.Text.Lazy as Lazy
@@ -114,7 +115,7 @@ rawProp name = Iso from to
       value <- M.lookup textName o
       return (M.delete textName o :- value :- r)
     to (o :- value :- r) = do
-      guard (M.notMember textName o)
+      guard (notMember textName o)
       return (M.insert textName value o :- r)
 
 -- | Expect a specific key/value pair.
@@ -127,11 +128,15 @@ rawFixedProp name value = stack (Iso from to)
       guard (value' == value)
       return (M.delete textName o)
     to o = do
-      guard (M.notMember textName o)
+      guard (notMember textName o)
       return (M.insert textName value o)
 
+-- Defined in Data.Map but not in Data.HashMap.Lazy:
+notMember :: (Eq k, Hashable k) => k -> M.HashMap k v -> Bool
+notMember k m = isJust (M.lookup k m)
+
 -- | Collect all properties left in an object.
-rest :: Iso (Object :- t) (Object :- M.Map Text Value :- t)
+rest :: Iso (Object :- t) (Object :- M.HashMap Text Value :- t)
 rest = lit M.empty
 
 -- | Match and discard all properties left in the object. When converting back to JSON, produces no properties.
