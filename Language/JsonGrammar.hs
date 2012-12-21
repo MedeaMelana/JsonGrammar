@@ -26,7 +26,7 @@ import Data.Int
 import Data.IntSet (IntSet)
 import Data.Iso hiding (option)
 import qualified Data.HashMap.Lazy as M
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.String
 import Data.Text (Text)
 import qualified Data.Text.Lazy as Lazy
@@ -133,7 +133,7 @@ rawFixedProp name value = stack (Iso from to)
 
 -- Defined in Data.Map but not in Data.HashMap.Lazy:
 notMember :: (Eq k, Hashable k) => k -> M.HashMap k v -> Bool
-notMember k m = isJust (M.lookup k m)
+notMember k m = isNothing (M.lookup k m)
 
 -- | Collect all properties left in an object.
 rest :: Iso (Object :- t) (Object :- M.HashMap Text Value :- t)
