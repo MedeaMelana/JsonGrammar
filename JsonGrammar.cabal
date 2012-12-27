@@ -7,7 +7,7 @@ Description:   	Combinators for bidirectional JSON parsing
 Author:         Martijn van Steenbergen
 Maintainer:     martijn@van.steenbergen.nl
 Stability:      Experimental
-Copyright:      Some Rights Reserved (CC) 2010-2011 Martijn van Steenbergen
+Copyright:      Some Rights Reserved (CC) 2010-2012 Martijn van Steenbergen
 Homepage:       https://github.com/MedeaMelana/JsonGrammar
 Bug-reports:    https://github.com/MedeaMelana/JsonGrammar/issues
 
