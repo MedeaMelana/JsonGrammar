@@ -25,7 +25,7 @@ Library
                     Data.Iso.TH,
                     Data.Iso.Common,
                     Language.JsonGrammar
-  Build-Depends:    base >= 3.0 && < 4.6,
+  Build-Depends:    base >= 3.0 && < 5,
                     aeson >= 0.6 && < 0.7,
                     semigroups >= 0.5 && < 0.9,
                     -- constraints copied from aeson-0.6.1.0:
