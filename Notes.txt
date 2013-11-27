@@ -1,0 +1,28 @@
+-- Given:
+
+forall f1, f2, g, (.).
+
+f1, f2 :: a -> Maybe b
+g      :: b -> Maybe a
+(.)    :: (b -> Maybe c) -> (a -> Maybe b) -> (a -> Maybe c)
+
+-- Do we need (.)'s implementation?
+
+f1 . g . f1 = f1
+f2 . g . f2 = f2
+
+(<>) :: (a -> Maybe b) -> (a -> Maybe b) -> (a -> Maybe b)
+f1 <> f2 = \x ->
+  case f1 x of
+    Nothing -> f2 x
+    Just y  -> Just y
+
+
+-- To prove:
+
+(f1 <> f2) . g . (f1 <> f2) = f1 <> f2
+
+exists x, y, x', y'.
+  y  == f1 x
+  x' == g y
+  y  == f1 x
