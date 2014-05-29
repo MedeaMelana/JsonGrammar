@@ -12,7 +12,7 @@ Homepage:       https://github.com/MedeaMelana/JsonGrammar
 Bug-reports:    https://github.com/MedeaMelana/JsonGrammar/issues
 
 
-Cabal-Version:  >= 1.6
+Cabal-Version:  >= 1.8
 License:        BSD3
 License-file:   LICENSE
 Category:       JSON, Language
@@ -42,3 +42,15 @@ Library
 Source-Repository head
   Type:         git
   Location:     https://github.com/MedeaMelana/JsonGrammar
+
+
+Test-Suite tests
+  Type: exitcode-stdio-1.0
+  Hs-Source-Dirs: tests
+  Main-Is: Tests.hs
+  Build-Depends:    JsonGrammar,
+                    base >= 3.0 && < 5,
+                    aeson >= 0.6 && < 0.7,
+                    test-framework,
+                    test-framework-hunit,
+                    HUnit
