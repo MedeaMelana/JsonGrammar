@@ -19,8 +19,6 @@ import Prelude hiding (id, (.), head, maybe, either)
 import Data.Aeson hiding (object)
 import Data.Aeson.Types (parseMaybe)
 import Data.Attoparsec.Number
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy as Lazy
 import Data.Hashable (Hashable)
 import Data.Int
 import Data.IntSet (IntSet)
@@ -182,8 +180,6 @@ instance Json Word16          where grammar = liftAeson
 instance Json Word32          where grammar = liftAeson
 instance Json Word64          where grammar = liftAeson
 instance Json ()              where grammar = liftAeson
-instance Json ByteString      where grammar = liftAeson
-instance Json Lazy.ByteString where grammar = liftAeson
 instance Json Number          where grammar = liftAeson
 instance Json Text            where grammar = liftAeson
 instance Json Lazy.Text       where grammar = liftAeson
